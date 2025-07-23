@@ -29,34 +29,48 @@ class JwtAuthenticationFilter(
         try {
             val token = getTokenFromRequest(request)
             
-            if (token != null && jwtUtil.validateToken(token)) {
-                val userId = jwtUtil.getUserIdFromToken(token)
-                
-                // 간단한 인증 객체 생성 (실제로는 UserDetails를 사용할 수 있음)
-                val authentication = UsernamePasswordAuthenticationToken(
-                    userId,
-                    null,
-                    emptyList() // authorities는 추후 구현
-                )
-                
-                SecurityContextHolder.getContext().authentication = authentication
+            if (token != null) {
+                authenticateWithToken(token)
             }
         } catch (e: Exception) {
             // JWT 처리 중 오류 발생 시 로그 기록 후 계속 진행
-            logger.error("JWT authentication error", e)
+            // SecurityContext는 비워둠으로써 인증되지 않은 상태로 유지
+            logger.warn("JWT authentication failed for token: ${e.message}")
+            if (logger.isDebugEnabled) {
+                logger.debug("JWT authentication error details", e)
+            }
         }
         
         filterChain.doFilter(request, response)
     }
     
     /**
+     * JWT 토큰으로 인증 처리
+     */
+    private fun authenticateWithToken(token: String) {
+        if (jwtUtil.validateToken(token)) {
+            val userId = jwtUtil.getUserIdFromToken(token)
+            
+            // 간단한 인증 객체 생성 (실제로는 UserDetails를 사용할 수 있음)
+            val authentication = UsernamePasswordAuthenticationToken(
+                userId,
+                null,
+                emptyList() // authorities는 추후 구현
+            )
+            
+            SecurityContextHolder.getContext().authentication = authentication
+        }
+    }
+    
+    /**
      * HTTP 요청에서 JWT 토큰 추출
      */
     private fun getTokenFromRequest(request: HttpServletRequest): String? {
-        val authorizationHeader = request.getHeader(AUTHORIZATION_HEADER)
+        val authorizationHeader = request.getHeader(AUTHORIZATION_HEADER) ?: return null
         
-        return if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
-            authorizationHeader.substring(BEARER_PREFIX.length)
+        return if (authorizationHeader.startsWith(BEARER_PREFIX)) {
+            val token = authorizationHeader.substring(BEARER_PREFIX.length).trim()
+            if (token.isNotEmpty()) token else null
         } else {
             null
         }
