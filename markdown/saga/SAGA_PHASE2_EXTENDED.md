@@ -1,6 +1,6 @@
 # Phase 2 확장 Saga 설계
 
-이 문서는 **알고리포트 Phase 2에서 구현할 6개 확장 Saga**의 상세 설계를 다룹니다. 이들은 플랫폼의 고급 기능과 사용자 경험 향상을 위한 분산 트랜잭션들입니다.
+이 문서는 **알고리포트 Phase 2에서 구현할 7개 확장 Saga**의 상세 설계를 다룹니다. 이들은 플랫폼의 고급 기능과 사용자 경험 향상을 위한 분산 트랜잭션들입니다.
 
 ---
 
@@ -8,18 +8,159 @@
 
 | 순서 | Saga 이름 | 복잡도 | 트리거 | 관련 모듈 | 구현 우선순위 |
 |-----|----------|-------|--------|----------|-------------|
-| 7 | `LEAVE_GROUP_SAGA` | High | 사용자 요청 | StudyGroup, User, Analysis, Notification | 🟡 Important |
-| 8 | `GROUP_RULE_UPDATE_SAGA` | Medium | 그룹장 요청 | StudyGroup, Analysis, Notification | 🟡 Important |
-| 9 | `PROBLEM_ASSIGNMENT_SAGA` | High | 스케줄러/그룹장 | StudyGroup, Analysis, Notification | 🟡 Important |
-| 10 | `RULE_VIOLATION_SAGA` | High | 스케줄러 | Analysis, StudyGroup, Notification | 🟡 Important |
-| 11 | `RECOMMENDATION_GENERATION_SAGA` | Medium | 스케줄러 | Analysis, StudyGroup, Notification | 🔵 Normal |
-| 12 | `GROUP_ACHIEVEMENT_SAGA` | Medium | 스케줄러 | StudyGroup, Analysis, Notification | 🔵 Normal |
+| 10 | `LEAVE_GROUP_SAGA` | High | 사용자 요청 | StudyGroup, User, Analysis, Notification | 🟡 Important |
+| 11 | `GROUP_RULE_UPDATE_SAGA` | Medium | 그룹장 요청 | StudyGroup, Analysis, Notification | 🟡 Important |
+| 12 | `PROBLEM_ASSIGNMENT_SAGA` | High | 스케줄러/그룹장 | StudyGroup, Analysis, Notification | 🟡 Important |
+| 13 | `RULE_VIOLATION_SAGA` | High | 스케줄러 | Analysis, StudyGroup, Notification | 🟡 Important |
+| 14 | `USER_ACHIEVEMENT_SAGA` | Medium | 조건 달성 시 | Analysis, User, Notification | 🔵 Normal |
+| 15 | `RECOMMENDATION_GENERATION_SAGA` | Medium | 스케줄러 | Analysis, StudyGroup, Notification | 🔵 Normal |
+| 16 | `GROUP_ACHIEVEMENT_SAGA` | Medium | 스케줄러 | StudyGroup, Analysis, Notification | 🔵 Normal |
 
 ---
 
 ## 📋 **상세 Saga 설계**
 
-### **7. LEAVE_GROUP_SAGA**
+### **14. USER_ACHIEVEMENT_SAGA**
+
+**목표**: 개인 성취/배지 획득과 관련 모듈 동기화 및 알림
+
+#### **비즈니스 요구사항**
+- 개인 성취 조건 달성 시 자동 배지 부여
+- 성취 이력 관리 및 프로필 업데이트
+- 성취 알림 및 공유 기능
+- 스터디 그룹 내 성취 공지
+
+#### **성취 타입**
+
+```kotlin
+enum class PersonalAchievementType {
+    PROBLEM_MILESTONE,           // "100문제, 500문제, 1000문제 해결"
+    TIER_PROMOTION,             // "티어 승급 (Bronze → Silver 등)"
+    TAG_MASTERY,               // "특정 태그 90% 이상 숙련도"
+    STREAK_ACHIEVEMENT,        // "연속 해결 기록 (7일, 30일, 100일)"
+    SPEED_SOLVING,             // "빠른 문제 해결 (1시간 내 10문제 등)"
+    DIFFICULTY_CHALLENGE,      // "본인 티어 +2 이상 문제 해결"
+    CONSISTENCY,               // "매일 꾸준히 문제 해결"
+    FIRST_BLOOD               // "새로 출제된 문제 최초 해결"
+}
+```
+
+#### **Saga 흐름도**
+
+```mermaid
+sequenceDiagram
+    participant A as Analysis Module
+    participant U as User Module
+    participant SG as StudyGroup Module
+    participant N as Notification Module
+    participant K as Kafka
+
+    Note over A,K: 🔄 USER_ACHIEVEMENT_SAGA (조건 달성 시 자동 트리거)
+    
+    A->>A: 제출 데이터 분석 중 성취 조건 감지
+    
+    rect rgb(255, 240, 240)
+        Note over A: Step 1: 성취 검증 및 배지 생성
+        A->>A: 성취 조건 재검증 (중복 방지)
+        A->>A: PersonalAchievement 엔티티 생성
+        A->>A: 배지 메타데이터 저장
+        A->>A: 성취 통계 업데이트
+        A->>A: Outbox에 이벤트 저장
+        A-->>K: USER_ACHIEVEMENT_UNLOCKED 발행
+    end
+    
+    rect rgb(240, 255, 240)
+        Note over U: Step 2: 사용자 프로필 배지 동기화
+        K->>U: USER_ACHIEVEMENT_UNLOCKED 수신
+        U->>U: 사용자 프로필에 새 배지 추가
+        U->>U: 배지 카운트 및 레벨 업데이트
+        U->>U: 성취 이력 저장
+        U->>U: Outbox에 이벤트 저장
+        U-->>K: USER_PROFILE_ACHIEVEMENT_SYNCED 발행
+    end
+    
+    rect rgb(240, 240, 255)
+        Note over SG: Step 3: 스터디 그룹 성취 공지
+        K->>SG: USER_ACHIEVEMENT_UNLOCKED 수신
+        SG->>SG: 사용자가 속한 그룹들 조회
+        loop 각 그룹별로
+            SG->>SG: 그룹 성취 피드에 추가
+            SG->>SG: 그룹 성취 통계 업데이트
+        end
+        SG->>SG: Outbox에 이벤트 저장
+        SG-->>K: GROUP_ACHIEVEMENT_FEED_UPDATED 발행
+    end
+    
+    rect rgb(255, 255, 240)
+        Note over N: Step 4: 성취 축하 알림
+        K->>N: USER_ACHIEVEMENT_UNLOCKED 수신
+        N->>N: 성취 축하 알림 생성
+        N->>N: 중요 성취의 경우 그룹원들에게도 알림
+        alt 마일스톤 성취 (100문제, 티어승급 등)
+            N->>N: 특별 축하 알림 및 이벤트 생성
+            N->>N: SNS 공유 기능 제공
+        end
+        N->>N: Outbox에 이벤트 저장
+        N-->>K: ACHIEVEMENT_CELEBRATION_SENT 발행
+    end
+```
+
+#### **이벤트 명세**
+
+##### `USER_ACHIEVEMENT_UNLOCKED`
+```json
+{
+  "eventType": "USER_ACHIEVEMENT_UNLOCKED",
+  "aggregateId": "achievement-{uuid}",
+  "sagaId": "{saga-uuid}",
+  "data": {
+    "userId": "{uuid}",
+    "achievementId": "{uuid}",
+    "achievementType": "PROBLEM_MILESTONE",
+    "title": "문제 해결 마스터",
+    "description": "500문제 해결 달성",
+    "badgeImageUrl": "https://badges.algoreport.com/500problems.png",
+    "rarity": "RARE",
+    "points": 100,
+    "unlockedAt": "2025-07-22T15:30:00Z",
+    "triggerData": {
+      "problemCount": 500,
+      "milestoneType": "PROBLEM_COUNT"
+    }
+  }
+}
+```
+
+#### **보상 트랜잭션**
+
+```mermaid
+sequenceDiagram
+    participant A as Analysis Module
+    participant U as User Module
+    participant K as Kafka
+
+    Note over A,K: 💥 Step 2 실패 시나리오 (프로필 동기화 실패)
+    
+    rect rgb(255, 200, 200)
+        Note over U: 사용자 프로필 배지 동기화 실패
+        U->>U: addAchievementToBadge() [DB 오류]
+        U->>U: Outbox에 실패 이벤트 저장
+        U-->>K: USER_PROFILE_ACHIEVEMENT_SYNC_FAILED 발행
+    end
+    
+    rect rgb(255, 200, 200)
+        Note over A: 보상: 성취 데이터 롤백
+        K->>A: USER_PROFILE_ACHIEVEMENT_SYNC_FAILED 수신
+        A->>A: 생성된 PersonalAchievement 삭제
+        A->>A: 성취 통계 원복
+        A->>A: Outbox에 보상 이벤트 저장
+        A-->>K: USER_ACHIEVEMENT_REVERTED 발행
+    end
+```
+
+---
+
+### **10. LEAVE_GROUP_SAGA**
 
 **목표**: 사용자의 스터디 그룹 탈퇴와 모든 관련 데이터 정리
 

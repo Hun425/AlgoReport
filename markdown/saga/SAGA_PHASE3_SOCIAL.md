@@ -8,15 +8,15 @@
 
 | 순서 | Saga 이름 | 복잡도 | 트리거 | 관련 모듈 | 구현 우선순위 |
 |-----|----------|-------|--------|----------|-------------|
-| 13 | `DISCUSSION_CREATE_SAGA` | Low | 사용자 요청 | Social, Notification | 🔵 Normal |
-| 14 | `CODE_REVIEW_SUBMIT_SAGA` | Medium | 사용자 요청 | Social, Analysis, Notification | 🔵 Normal |
-| 15 | `CONTENT_MODERATION_SAGA` | High | 신고 접수/자동 감지 | Social, User, Notification | 🔴 Low Priority |
+| 17 | `DISCUSSION_CREATE_SAGA` | Low | 사용자 요청 | Social, Notification | 🔵 Normal |
+| 18 | `CODE_REVIEW_SUBMIT_SAGA` | Medium | 사용자 요청 | Social, Analysis, Notification | 🔵 Normal |
+| 19 | `CONTENT_MODERATION_SAGA` | High | 신고 접수/자동 감지 | Social, User, Notification | 🔴 Low Priority |
 
 ---
 
 ## 📋 **상세 Saga 설계**
 
-### **13. DISCUSSION_CREATE_SAGA**
+### **17. DISCUSSION_CREATE_SAGA**
 
 **목표**: 문제별 토론 생성과 관련 알림 발송
 
@@ -123,7 +123,7 @@ class DiscussionSpamFilter {
 
 ---
 
-### **14. CODE_REVIEW_SUBMIT_SAGA**
+### **18. CODE_REVIEW_SUBMIT_SAGA**
 
 **목표**: 코드 리뷰 제출과 분석 데이터 연동
 
@@ -338,7 +338,7 @@ class ReviewerRecommendationService {
 
 ---
 
-### **15. CONTENT_MODERATION_SAGA**
+### **19. CONTENT_MODERATION_SAGA**
 
 **목표**: 신고된 컨텐츠 검토 및 자동 조치
 

@@ -69,27 +69,52 @@ docker-compose up -d
 
 ## 🏗️ **Architecture Overview**
 
-**Kotlin 1.9.x** + **Spring Boot 3.2.x** + **Modular Monolith**
+**Kotlin 2.2.0** + **Spring Boot 3.5.3** + **Java 24** + **Modular Monolith**
 
 ### **Technology Stack**
 
-- **Language**: Kotlin
-    
-- **Backend Framework**: Spring Boot, Spring Security, Spring Data JPA
-    
+- **Language**: Kotlin 2.2.0
+- **JDK**: Java 24 
+- **Backend Framework**: Spring Boot 3.5.3, Spring Security, Spring Data JPA
 - **Frontend Framework**: Kotlin Multiplatform (Compose for Web/Android/iOS)
-    
 - **Database**: PostgreSQL (Production), H2 (Testing)
-    
 - **Message Queue**: Kafka
-    
 - **Cache**: Redis
-    
 - **Search & Analysis Engine**: Elasticsearch, Kibana
-    
 - **Authentication**: Google OAuth2 + JWT
-    
 - **Testing**: JUnit 5, MockK, Kotest
+
+### **🎯 Java 24 선택 근거**
+
+#### **Java 24 vs Java 21 LTS vs Java 17 LTS**
+
+**왜 Java 24를 선택했는가?**
+
+1. **최신 성능 최적화**
+   - **Vector API (Preview)**: 대용량 알고리즘 문제 분석 데이터 처리 시 SIMD 연산 활용
+   - **ZGC 개선**: solved.ac 대용량 데이터 수집 시 낮은 지연시간 GC
+   - **Project Loom 안정화**: 수천 개 문제 동시 분석 시 Virtual Thread 활용
+
+2. **알고리포트 특화 혜택**
+   - **Pattern Matching for switch**: 문제 태그 및 난이도 분류 로직 간소화
+   - **Text Blocks**: SQL 쿼리 및 JSON 템플릿 가독성 향상
+   - **Records**: DTO 클래스 간소화 (특히 solved.ac API 응답 매핑)
+
+3. **미래 대비**
+   - **호환성**: Kotlin 2.2.0 + Spring Boot 3.5.3에서 완전 지원
+   - **마이그레이션 부담 제거**: 추후 LTS 전환 시 코드 변경 최소화
+   - **생태계 준비**: 대부분 라이브러리가 Java 24 지원 완료 (2025년 7월 기준)
+
+4. **개발 생산성**
+   - **향상된 IDE 지원**: IntelliJ IDEA 2025.x에서 Java 24 최적화
+   - **빠른 컴파일**: JIT 컴파일러 개선으로 개발 시 빌드 속도 향상
+   - **디버깅 개선**: 새로운 디버거 기능으로 SAGA 패턴 디버깅 용이
+
+**⚠️ Java LTS 대비 고려사항**
+- **Java 17 LTS**: 2029년까지 지원이지만 성능상 제약
+- **Java 21 LTS**: 2031년까지 지원이지만 Java 24 대비 Vector API, Loom 개선사항 누락
+
+**결론**: 알고리포트의 **대용량 데이터 처리**와 **복잡한 분석 알고리즘** 특성상 Java 24의 성능 혜택이 LTS의 안정성 이점보다 크다고 판단
     
 
 ### **Domain Structure (Modular Monolith)**

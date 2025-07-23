@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: algoreport
+  profiles:
+    active: dev
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        
+  h2:
+    console:
+      enabled: true
+      
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.algoreport: DEBUG
+    org.springframework.security: DEBUG
