@@ -817,10 +817,11 @@ CREATE TABLE OUTBOX_EVENTS (
     error_message TEXT
 );
 
--- 성능 최적화 인덱스
-CREATE INDEX idx_outbox_unprocessed ON OUTBOX_EVENTS(processed, created_at) WHERE processed = FALSE;
+-- CDC 최적화 인덱스 (재시도 관련 인덱스 제거)
+CREATE INDEX idx_outbox_processed ON OUTBOX_EVENTS(processed);
 CREATE INDEX idx_outbox_saga ON OUTBOX_EVENTS(saga_id, saga_type);
-CREATE INDEX idx_outbox_retry ON OUTBOX_EVENTS(next_retry_at) WHERE processed = FALSE AND retry_count < max_retries;
+CREATE INDEX idx_outbox_aggregate ON OUTBOX_EVENTS(aggregate_type, aggregate_id, created_at);
+CREATE INDEX idx_outbox_cleanup ON OUTBOX_EVENTS(processed_at); -- 정리 작업용
 ```
 
 ### **CDC 기반 Outbox Pattern 구현**

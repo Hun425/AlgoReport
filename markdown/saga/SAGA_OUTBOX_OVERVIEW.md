@@ -107,124 +107,104 @@ graph TD
 
 ### **1. Outbox Pattern 구현**
 
-#### **표준 Outbox 테이블 스키마**
+#### **CDC 최적화된 Outbox 테이블 스키마**
 
 ```sql
--- 모든 서비스에서 공통으로 사용하는 Outbox 테이블
+-- CDC 기반으로 최적화된 Outbox 테이블
+-- retry 관련 필드 제거 (CDC가 실시간 발행 보장)
 CREATE TABLE OUTBOX_EVENTS (
     event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     aggregate_type VARCHAR(50) NOT NULL,  -- USER, STUDY_GROUP, ANALYSIS 등
     aggregate_id VARCHAR(100) NOT NULL,   -- 집합체 ID  
     event_type VARCHAR(100) NOT NULL,     -- 이벤트 타입
-    event_data JSONB NOT NULL,            -- 이벤트 페이로드
+    event_data TEXT NOT NULL,             -- 이벤트 페이로드 (JSON)
     saga_id UUID,                         -- Saga 추적 ID (선택적)
     saga_type VARCHAR(50),                -- Saga 타입 (선택적)
     created_at TIMESTAMP DEFAULT NOW(),
-    processed BOOLEAN DEFAULT FALSE,
-    processed_at TIMESTAMP,
-    retry_count INTEGER DEFAULT 0,
-    max_retries INTEGER DEFAULT 3,
-    next_retry_at TIMESTAMP,
-    error_message TEXT,
+    processed BOOLEAN DEFAULT FALSE,      -- CDC 후처리 완료 여부
+    processed_at TIMESTAMP,               -- CDC 후처리 완료 시각
     version INTEGER DEFAULT 1             -- 스키마 버전 관리
 );
 
--- 성능 최적화 인덱스
-CREATE INDEX idx_outbox_unprocessed 
-ON OUTBOX_EVENTS(processed, created_at) 
-WHERE processed = FALSE;
+-- CDC 최적화 인덱스 (재시도 관련 인덱스 제거)
+CREATE INDEX idx_outbox_processed 
+ON OUTBOX_EVENTS(processed);
 
 CREATE INDEX idx_outbox_saga 
 ON OUTBOX_EVENTS(saga_id, saga_type);
 
-CREATE INDEX idx_outbox_retry 
-ON OUTBOX_EVENTS(next_retry_at) 
-WHERE processed = FALSE AND retry_count < max_retries;
-
 CREATE INDEX idx_outbox_aggregate
 ON OUTBOX_EVENTS(aggregate_type, aggregate_id, created_at);
+
+CREATE INDEX idx_outbox_cleanup
+ON OUTBOX_EVENTS(processed_at); -- 정리 작업용
 ```
 
-#### **Outbox Event Publisher (공통 구현)**
+#### **CDC 기반 Outbox Event Handler**
+
+**🔄 CDC 아키텍처**: PostgreSQL WAL → Debezium → Kafka → Event Handler
 
 ```kotlin
 @Component
-class OutboxEventPublisher {
+class OutboxEventHandler(
+    private val outboxEventRepository: OutboxEventRepository,
+    private val objectMapper: ObjectMapper
+) {
     
-    private val logger = LoggerFactory.getLogger(OutboxEventPublisher::class.java)
-    private val publishedCounter = Counter.build()
-        .name("outbox_events_published_total")
-        .help("Total number of outbox events published")
-        .register()
+    private val logger = LoggerFactory.getLogger(OutboxEventHandler::class.java)
     
-    @Scheduled(fixedDelay = 5000)
-    @Transactional(readOnly = true)
-    fun publishOutboxEvents() {
-        val unpublishedEvents = outboxRepository.findUnprocessedEvents(limit = 100)
-        
-        if (unpublishedEvents.isEmpty()) return
-        
-        logger.debug("Publishing {} outbox events", unpublishedEvents.size)
-        
-        unpublishedEvents.forEach { event ->
-            try {
-                publishEventWithRetry(event)
-                markAsProcessed(event)
-                publishedCounter.inc()
-            } catch (ex: Exception) {
-                handlePublishFailure(event, ex)
-            }
-        }
-    }
-    
-    private fun publishEventWithRetry(event: OutboxEvent) {
-        val message = createKafkaMessage(event)
-        
-        // 동기 발송으로 실패를 즉시 감지
-        kafkaTemplate.send(event.eventType, message)
-            .get(5, TimeUnit.SECONDS) // 5초 타임아웃
-    }
-    
-    private fun createKafkaMessage(event: OutboxEvent): KafkaMessage {
-        return KafkaMessage(
-            key = event.aggregateId,
-            value = event.eventData,
-            headers = mapOf(
-                "eventType" to event.eventType,
-                "sagaId" to event.sagaId,
-                "sagaType" to event.sagaType,
-                "aggregateType" to event.aggregateType,
-                "version" to event.version.toString(),
-                "timestamp" to event.createdAt.toString()
-            )
-        )
-    }
-    
+    /**
+     * CDC에서 발행된 Outbox 이벤트 수신 및 후처리
+     * 
+     * Debezium Outbox Event Router에 의해 이벤트 타입별 토픽으로 라우팅된 메시지를 수신
+     */
+    @KafkaListener(
+        topicPattern = "USER_.*|STUDY_GROUP_.*|ANALYSIS_.*|NOTIFICATION_.*",
+        groupId = "algoreport-outbox-handler",
+        concurrency = "3"
+    )
     @Transactional
-    private fun markAsProcessed(event: OutboxEvent) {
-        event.processed = true
-        event.processedAt = LocalDateTime.now()
-        outboxRepository.save(event)
+    fun handleOutboxEvent(
+        @Payload eventPayload: String,
+        @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
+        @Header("eventId", required = false) eventId: String?,
+        @Header("sagaId", required = false) sagaId: String?,
+        @Header("sagaType", required = false) sagaType: String?,
+        @Header("aggregateType", required = false) aggregateType: String?
+    ) {
+        try {
+            logger.debug("Processing outbox event: topic={}, eventId={}, sagaId={}", topic, eventId, sagaId)
+            
+            // 이벤트 페이로드 파싱
+            val eventData = parseEventPayload(eventPayload)
+            
+            // 이벤트별 비즈니스 로직 처리
+            processBusinessLogic(topic, eventData, sagaId, aggregateType)
+            
+            // Outbox 테이블에서 처리 완료 마킹
+            eventId?.let { id ->
+                markEventAsProcessed(UUID.fromString(id))
+            }
+            
+            logger.info("Successfully processed outbox event: topic={}, eventId={}", topic, eventId)
+            
+        } catch (ex: Exception) {
+            logger.error("Failed to process outbox event: topic={}, eventId={}", topic, eventId, ex)
+            // CDC 기반에서는 자동 재시도가 Kafka Consumer에 의해 처리됨
+            throw ex // 재시도를 위해 예외를 다시 던짐
+        }
     }
     
-    @Transactional  
-    private fun handlePublishFailure(event: OutboxEvent, ex: Exception) {
-        event.retryCount++
-        event.errorMessage = ex.message?.take(1000) // 에러 메시지 길이 제한
-        
-        if (event.retryCount >= event.maxRetries) {
-            event.processed = true // DLQ 처리 또는 수동 처리 필요
-            logger.error("Event publishing failed after max retries: ${event.eventId}", ex)
-            // 알림 발송 (Slack, PagerDuty 등)
-            alertingService.sendCriticalAlert("Outbox event failed permanently", event)
-        } else {
-            // 지수 백오프로 재시도 시간 계산
-            val delayMinutes = (2.0.pow(event.retryCount.toDouble())).toLong()
-            event.nextRetryAt = LocalDateTime.now().plusMinutes(delayMinutes)
-            logger.warn("Event publishing failed, will retry in ${delayMinutes}min: ${event.eventId}", ex)
+    private fun markEventAsProcessed(eventId: UUID) {
+        try {
+            outboxEventRepository.findById(eventId).ifPresent { event ->
+                event.markAsProcessed()
+                outboxEventRepository.save(event)
+                logger.debug("Marked outbox event as processed: {}", eventId)
+            }
+        } catch (ex: Exception) {
+            logger.warn("Failed to mark outbox event as processed: {}", eventId, ex)
         }
-        
-        outboxRepository.save(event)
     }
 }
 ```
@@ -389,24 +369,27 @@ NOTIFICATION_FAILED               # 알림 발송 실패
 
 ## 🚨 **장애 대응 전략**
 
-### **장애 시나리오별 대응**
+### **CDC 기반 장애 시나리오별 대응**
 
 | 장애 유형 | 감지 방법 | 자동 복구 | 수동 개입 |
 |----------|----------|----------|----------|
-| **이벤트 발행 실패** | Outbox 미처리 이벤트 증가 | 재시도 + 지수 백오프 | DLQ 이벤트 수동 처리 |
-| **이벤트 처리 실패** | Consumer Lag 증가 | Dead Letter Queue | 실패 이벤트 재처리 |
+| **WAL 복제 지연** | Debezium lag 메트릭 | 자동 따라잡기 | Debezium 재시작 |
+| **이벤트 처리 실패** | Consumer Lag 증가 | Kafka 재시도 + DLQ | 실패 이벤트 재처리 |
+| **Outbox 테이블 락** | DB 락 대기 시간 증가 | 트랜잭션 타임아웃 | 장기 트랜잭션 분석 |
 | **Saga 타임아웃** | 장시간 실행 Saga 감지 | 자동 보상 트랜잭션 | Saga 수동 완료/취소 |
 | **보상 실패** | 보상 이벤트 실패 알림 | 제한적 재시도 | 데이터 정합성 수동 복구 |
 | **중복 이벤트** | 멱등성 키 중복 | 이벤트 무시 | - |
+| **Debezium 커넥터 오류** | 커넥터 상태 모니터링 | 자동 재시작 | 수동 커넥터 재설정 |
 
-### **핵심 메트릭**
+### **CDC 최적화 핵심 메트릭**
 
 ```yaml
-# Outbox 관련
-outbox.events.unpublished.count          # 미발행 이벤트 수
-outbox.events.retry.count               # 재시도 중인 이벤트 수  
-outbox.events.failed.count              # 영구 실패 이벤트 수
-outbox.publish.duration                 # 발행 처리 시간
+# CDC & Outbox 관련
+debezium.connector.status               # Debezium 커넥터 상태
+debezium.lag.milliseconds              # WAL 복제 지연시간
+outbox.events.unprocessed.count        # CDC 후처리 미완료 이벤트 수
+outbox.events.insert.rate              # 초당 이벤트 생성율
+outbox.table.size                      # Outbox 테이블 크기
 
 # Saga 관련
 saga.instances.active.count             # 진행 중인 Saga 수
@@ -415,10 +398,15 @@ saga.completion.rate                    # Saga 성공률
 saga.compensation.rate                  # 보상 실행률
 saga.duration.percentiles               # Saga 실행 시간 분포
 
-# 이벤트 처리 관련  
-events.processing.lag                   # 이벤트 처리 지연
-events.processing.rate                  # 초당 이벤트 처리량
-events.processing.errors.rate           # 이벤트 처리 오류율
+# Kafka 이벤트 처리 관련  
+kafka.consumer.lag                      # Consumer lag (이벤트 처리 지연)
+kafka.consumer.throughput               # 초당 이벤트 처리량
+kafka.consumer.errors.rate              # 이벤트 처리 오류율
+kafka.dlq.messages.count                # Dead Letter Queue 메시지 수
+
+# 성능 지표
+postgresql.wal.size                     # WAL 파일 크기
+postgresql.replication.lag              # 복제 지연
 ```
 
 ---
