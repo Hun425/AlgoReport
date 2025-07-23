@@ -91,13 +91,27 @@
   - `feat: Green - CustomException 클래스 기본 구현` (b01b675)
   - `refactor: Refactor - GlobalExceptionHandler 구현 및 개선` (503962b)
 
+#### **0-3-2: OAuth2 + JWT 보안 설정** ✅ **완료** (2025-07-23)
+- **TDD 적용**: Red-Green-Refactor 사이클 완료
+- **구현 내용**:
+  - **SecurityConfig**: OAuth2 + JWT 통합 보안 설정
+    - 공개/인증 엔드포인트 분리, 상수 분리로 유지보수성 향상
+    - OAuth2 Handler 의존성 주입 개선
+  - **JwtUtil**: JWT 토큰 생성/검증 유틸리티 (jjwt 0.12.x 호환)
+  - **JwtAuthenticationFilter**: JWT 토큰 기반 인증 필터
+    - 예외 처리 개선, 토큰 추출 로직 강화
+  - **OAuth2 Handlers**: 성공/실패 핸들러 기본 구조
+- **커밋 내역**:
+  - `test: Red - OAuth2 + JWT 보안 설정 테스트 작성` (603d1c9)
+  - `feat: Green - OAuth2 + JWT 보안 설정 기본 구현` (5567f6d)
+  - `refactor: Refactor - OAuth2 + JWT 보안 설정 리팩토링` (b0adecd)
+
 ## 📈 **Phase 0 진행률**
 
-- **전체 진행률**: 80% (Task 0-1, 0-2, 0-3-1 완료)
-- **남은 작업**: Task 0-3-2, 0-3-3
-- **현재 진행**: Task 0-3-2 (OAuth2 + JWT 보안 설정)
+- **전체 진행률**: 90% (Task 0-1, 0-2, 0-3-1, 0-3-2 완료)
+- **남은 작업**: Task 0-3-3
+- **현재 진행**: Task 0-3-3 (Outbox Pattern 기본 구현)
 
 ## 🎯 **다음 우선순위**
 
-1. **Task 0-3-2**: OAuth2 + JWT 보안 설정 기본 구조 (TDD 적용) 🚀 **진행중**
-2. **Task 0-3-3**: Outbox Pattern 기본 구현 (TDD 적용)
+1. **Task 0-3-3**: Outbox Pattern 기본 구현 (TDD 적용) 🚀 **다음 작업**
