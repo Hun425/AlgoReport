@@ -28,13 +28,17 @@
 5. **NEXT_TASKS.md** - 다음 할 일 및 우선순위
     
 
-### **필수 작업 규칙**
+### **🚨 필수 작업 규칙 🚨**
 
 - 모든 TDD 작업 전/후 해당 문서들 확인 및 업데이트
     
 - 각 Red-Green-Refactor 사이클 완료 시 진행 상황 기록
     
-- **TDD 사이클별 커밋 필수**: Red-Green-Refactor 각 단계마다 반드시 커밋
+- **🔥 TDD 사이클별 커밋 필수 - 절대 까먹지 말 것! 🔥**
+  - **Red 단계** → 테스트 작성 후 **즉시 커밋**
+  - **Green 단계** → 구현 완료 후 **즉시 커밋** 
+  - **Refactor 단계** → 리팩토링 완료 후 **즉시 커밋**
+  - **단계별 순서 엄수**: Red → 커밋 → Green → 커밋 → Refactor → 커밋
     
 - 커밋 메시지 형식: `test/feat/refactor: Red/Green/Refactor - 간략한 설명`
 
