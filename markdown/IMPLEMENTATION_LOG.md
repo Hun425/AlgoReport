@@ -3,8 +3,8 @@
 ## 📊 프로젝트 개요
 
 - **프로젝트명**: 알고리포트 (Algo-Report)
-- **총 완료 기능**: 1개 (Phase 0)
-- **마지막 업데이트**: 2025-07-22
+- **총 완료 기능**: 3개 (Phase 0)
+- **마지막 업데이트**: 2025-07-23
 
 ---
 
@@ -77,14 +77,27 @@
 
 ---
 
+### **Task 0-3: 공통 인프라 구현** (진행중: 2025-07-23)
+
+#### **0-3-1: 전역 예외 처리 구현** ✅ **완료**
+- **TDD 적용**: Red-Green-Refactor 사이클 완료
+- **구현 내용**:
+  - **Error enum**: HTTP 상태별 에러 코드 정의 (14개 에러 타입)
+  - **CustomException**: Error enum 기반 커스텀 예외 클래스
+  - **GlobalExceptionHandler**: @RestControllerAdvice 전역 예외 처리
+  - **ErrorResponse**: 구조화된 에러 응답 DTO
+- **커밋 내역**:
+  - `test: Red - CustomException 클래스 테스트 작성` (7160ff2)
+  - `feat: Green - CustomException 클래스 기본 구현` (b01b675)
+  - `refactor: Refactor - GlobalExceptionHandler 구현 및 개선` (503962b)
+
 ## 📈 **Phase 0 진행률**
 
-- **전체 진행률**: 60% (Task 0-1, 0-2 완료)
-- **남은 작업**: Task 0-3 (공통 인프라 구현)
-- **예상 완료**: Task 0-3-1~0-3-3 구현 필요
+- **전체 진행률**: 80% (Task 0-1, 0-2, 0-3-1 완료)
+- **남은 작업**: Task 0-3-2, 0-3-3
+- **현재 진행**: Task 0-3-2 (OAuth2 + JWT 보안 설정)
 
 ## 🎯 **다음 우선순위**
 
-1. **Task 0-3-1**: 전역 예외 처리 구현 (TDD 적용)
-2. **Task 0-3-2**: OAuth2 + JWT 보안 설정 기본 구조 (TDD 적용)  
-3. **Task 0-3-3**: Outbox Pattern 기본 구현 (TDD 적용)
+1. **Task 0-3-2**: OAuth2 + JWT 보안 설정 기본 구조 (TDD 적용) 🚀 **진행중**
+2. **Task 0-3-3**: Outbox Pattern 기본 구현 (TDD 적용)

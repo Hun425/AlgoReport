@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(find:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(./gradlew:*)",
+      "Bash(gradlew.bat clean:*)",
+      "Bash(ls:*)",
+      "Bash(java:*)",
+      "Bash(chmod:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell:*)"
     ],
     "deny": []
   }
