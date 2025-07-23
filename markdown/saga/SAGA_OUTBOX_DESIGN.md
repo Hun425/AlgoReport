@@ -823,18 +823,21 @@ CREATE INDEX idx_outbox_saga ON OUTBOX_EVENTS(saga_id, saga_type);
 CREATE INDEX idx_outbox_retry ON OUTBOX_EVENTS(next_retry_at) WHERE processed = FALSE AND retry_count < max_retries;
 ```
 
-### **Outbox Event Publisher 구현**
+### **CDC 기반 Outbox Pattern 구현**
+
+**Change Data Capture (CDC)를 통한 실시간 이벤트 발행**
 
 ```kotlin
-@Component
-class OutboxEventPublisher {
+// Debezium Connector가 WAL 변경사항을 감지하여 자동으로 Kafka 발행
+// 별도의 스케줄링이나 폴링 불필요
+
+@Component  
+class OutboxEventHandler {
     
-    @Scheduled(fixedDelay = 5000) // 5초마다 실행
-    fun publishOutboxEvents() {
-        val unpublishedEvents = outboxRepository.findUnprocessedEvents(limit = 100)
-        
-        unpublishedEvents.forEach { event ->
-            try {
+    // CDC에서 발행된 이벤트의 후처리만 담당
+    @KafkaListener(topics = ["outbox.events"])
+    fun handleOutboxEvent(event: OutboxEventMessage) {
+        try {
                 publishEvent(event)
                 event.markAsProcessed()
             } catch (ex: Exception) {

@@ -106,12 +106,33 @@
   - `feat: Green - OAuth2 + JWT 보안 설정 기본 구현` (5567f6d)
   - `refactor: Refactor - OAuth2 + JWT 보안 설정 리팩토링` (b0adecd)
 
+#### **0-3-3: CDC 기반 Outbox Pattern 구현** ✅ **완료** (2025-07-23)
+- **TDD 적용**: Red-Green-Refactor 사이클 완료
+- **아키텍처 변경**: Polling → CDC (Change Data Capture) 방식으로 전환
+- **구현 내용**:
+  - **OutboxEvent 엔티티**: CDC 최적화 (재시도 필드 제거, WAL 기반 발행)
+  - **Debezium CDC 인프라**: PostgreSQL WAL → Kafka Connect → 실시간 이벤트 발행
+    - `docker-compose.yml`: PostgreSQL logical replication + Debezium 설정
+    - `outbox-connector.json`: Outbox Event Router 설정
+  - **OutboxEventHandler**: CDC 이벤트 수신 및 비즈니스 로직 처리
+  - **OutboxEventRepository**: 폴링 제거, 조회/정리 작업 중심으로 단순화
+  - **OutboxService**: 이벤트 발행 및 JSON 변환 기능
+- **성능 향상**:
+  - **실시간 발행**: INSERT 즉시 Kafka 발행 (5초 폴링 지연 제거)
+  - **DB 부하 제거**: 초당 0.2회 폴링 쿼리 완전 제거
+  - **확장성**: 이벤트 양 증가와 무관하게 일정한 성능
+- **커밋 내역**:
+  - `test: Red - Outbox Pattern 기본 구조 테스트 작성` (c6216bc)
+  - `feat: Green - Outbox Pattern 기본 구조 구현` (0756f9e)
+
 ## 📈 **Phase 0 진행률**
 
-- **전체 진행률**: 90% (Task 0-1, 0-2, 0-3-1, 0-3-2 완료)
-- **남은 작업**: Task 0-3-3
-- **현재 진행**: Task 0-3-3 (Outbox Pattern 기본 구현)
+- **전체 진행률**: 100% ✅ **완료** (Task 0-1, 0-2, 0-3-1, 0-3-2, 0-3-3 완료)
+- **완료 일자**: 2025-07-23
+- **Phase 0 최종 상태**: 모든 기반 인프라 구축 완료
 
 ## 🎯 **다음 우선순위**
 
-1. **Task 0-3-3**: Outbox Pattern 기본 구현 (TDD 적용) 🚀 **다음 작업**
+1. **Phase 1 준비**: 핵심 데이터 파이프라인 구축 🚀 **다음 Phase**
+   - **INITIAL_DATA_SYNC_SAGA**: solved.ac 대용량 데이터 수집
+   - **SUBMISSION_SYNC_SAGA**: 실시간 제출 데이터 동기화

@@ -37,6 +37,8 @@
 - **TDD 사이클별 커밋 필수**: Red-Green-Refactor 각 단계마다 반드시 커밋
     
 - 커밋 메시지 형식: `test/feat/refactor: Red/Green/Refactor - 간략한 설명`
+
+- **문서 최신화 필수**: 모든 작업 완료 후 관련 문서 즉시 업데이트
     
 
 ## 🔧 **Build & Development Commands**
@@ -46,6 +48,11 @@
 ```
 # Docker 인프라 실행 (최초 1회)
 docker-compose up -d
+
+# Debezium Connector 설정 (CDC 활성화)
+curl -X POST http://localhost:8083/connectors \
+  -H "Content-Type: application/json" \
+  -d @scripts/outbox-connector.json
 
 # 프로젝트 빌드
 ./gradlew build
@@ -78,7 +85,8 @@ docker-compose up -d
 - **Backend Framework**: Spring Boot 3.5.3, Spring Security, Spring Data JPA
 - **Frontend Framework**: Kotlin Multiplatform (Compose for Web/Android/iOS)
 - **Database**: PostgreSQL (Production), H2 (Testing)
-- **Message Queue**: Kafka
+- **Message Queue**: Kafka + Kafka Connect
+- **CDC (Change Data Capture)**: Debezium + PostgreSQL WAL
 - **Cache**: Redis
 - **Search & Analysis Engine**: Elasticsearch, Kibana
 - **Authentication**: Google OAuth2 + JWT
@@ -157,14 +165,45 @@ docker-compose up -d
 src/main/kotlin/com/algoreport/
 ├── config/                    # 설정 및 공통 기능
 │   ├── security/             # OAuth2, JWT & Spring Security
-│   └── exception/            # 전역 예외 처리
+│   ├── exception/            # 전역 예외 처리
+│   └── outbox/              # CDC 기반 Outbox Pattern
+│       ├── OutboxEvent.kt   # 이벤트 엔티티
+│       ├── OutboxEventRepository.kt
+│       ├── OutboxService.kt
+│       └── OutboxEventHandler.kt  # CDC 이벤트 수신
 ├── module/                    # 도메인별 논리적 모듈
 │   ├── user/                 # 플랫폼 사용자 모듈
 │   ├── studygroup/           # 스터디 그룹 모듈
 │   ├── analysis/             # 분석 및 추천 모듈
 │   └── notification/         # 알림 모듈
-└── collector/                 # 외부 데이터 수집기
+└── collector/                 # solved.ac 데이터 수집기
 ```
+
+## ⚡ **CDC 기반 실시간 이벤트 아키텍처**
+
+### **Outbox Pattern + Change Data Capture**
+
+**아키텍처 개요**: PostgreSQL WAL → Debezium → Kafka → Event Handler
+
+```mermaid
+graph LR
+    A[Business Logic] --> B[OutboxEvent Table]
+    B --> C[PostgreSQL WAL]
+    C --> D[Debezium CDC]
+    D --> E[Kafka Topics]
+    E --> F[OutboxEventHandler]
+    F --> G[Business Event Processing]
+```
+
+**핵심 컴포넌트**:
+- **OutboxEvent**: 이벤트 저장 (비즈니스 트랜잭션과 동일 트랜잭션)
+- **Debezium Connector**: WAL 감지 → Kafka 발행
+- **OutboxEventHandler**: 이벤트 수신 → 비즈니스 로직 처리
+
+**성능 향상**:
+- **실시간 발행**: INSERT 즉시 Kafka 발행 (폴링 지연 제거)
+- **DB 부하 제거**: 초당 0.2회 폴링 쿼리 완전 제거  
+- **확장성**: 이벤트 양 증가와 무관하게 일정한 성능
 
 ## 📡 **API 구조 및 명명 규칙**
 

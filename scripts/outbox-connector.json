@@ -1,0 +1,46 @@
+{
+  "name": "algoreport-outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "algoreport",
+    "database.password": "algoreport123",
+    "database.dbname": "algoreport",
+    "database.server.name": "algoreport",
+    "plugin.name": "pgoutput",
+    "slot.name": "algoreport_outbox_slot",
+    "publication.name": "algoreport_outbox_pub",
+    
+    "table.include.list": "public.outbox_events",
+    "tombstones.on.delete": "false",
+    
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.table.field.event.id": "event_id",
+    "transforms.outbox.table.field.event.key": "aggregate_id",
+    "transforms.outbox.table.field.event.type": "event_type",
+    "transforms.outbox.table.field.event.payload": "event_data",
+    "transforms.outbox.table.field.event.timestamp": "created_at",
+    
+    "transforms.outbox.route.topic.replacement": "${routedByValue}",
+    "transforms.outbox.table.fields.additional.placement": "saga_id:header:sagaId,saga_type:header:sagaType,aggregate_type:header:aggregateType,version:header:version",
+    
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    
+    "topic.creation.enable": "true",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "3",
+    "topic.creation.default.cleanup.policy": "compact",
+    "topic.creation.default.compression.type": "lz4",
+    
+    "heartbeat.interval.ms": "10000",
+    "max.batch.size": "1000",
+    "max.queue.size": "10000",
+    
+    "snapshot.mode": "initial",
+    "publication.autocreate.mode": "filtered"
+  }
+}
