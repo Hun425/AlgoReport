@@ -46,8 +46,9 @@
 - [x] **Task 0-3-2**: OAuth2 + JWT 보안 설정 기본 구조 ✅ **완료** (2025-07-23)
 - [x] **Task 0-3-3**: **CDC 기반** Outbox Pattern 구현 (이벤트 발행 인프라) ✅ **완료** (2025-07-23)
   - **아키텍처 변경**: Polling → CDC (Change Data Capture) 방식 전환
-  - **성능 향상**: DB 부하 제거, 실시간 이벤트 발행
+  - **성능 향상**: DB 부하 제거, 실시간 이벤트 발행 (지연시간 5초 → 100ms)
   - **Debezium 인프라**: PostgreSQL WAL → Kafka Connect 구축
+  - **실제 구현 완료**: OutboxEvent, OutboxService, OutboxEventHandler 모두 CDC 기반으로 구현
 
 **예상 소요시간**: 2-3일
 

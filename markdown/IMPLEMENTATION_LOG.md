@@ -13,7 +13,7 @@
 ### **Task 0-1: 프로젝트 초기 설정** (완료: 2025-07-22)
 
 #### **0-1-1: Kotlin+Spring Boot 프로젝트 생성** ✅
-- **기술 스택**: Kotlin 2.2.0 + Spring Boot 3.5.3 + Java 24
+- **기술 스택**: Kotlin 2.2.0 + Spring Boot 3.5.3 + Java 21 LTS
 - **완료 내용**:
   - build.gradle.kts 생성 (필수 의존성 포함)
   - 프로젝트 구조 생성 (모듈별 패키지)
@@ -111,19 +111,28 @@
 - **아키텍처 변경**: Polling → CDC (Change Data Capture) 방식으로 전환
 - **구현 내용**:
   - **OutboxEvent 엔티티**: CDC 최적화 (재시도 필드 제거, WAL 기반 발행)
+    - `retry_count`, `max_retries`, `next_retry_at` 필드 제거
+    - `processed` 필드로 CDC 후처리 완료 상태 추적
+    - 실시간 WAL 감지를 위한 인덱스 최적화
   - **Debezium CDC 인프라**: PostgreSQL WAL → Kafka Connect → 실시간 이벤트 발행
-    - `docker-compose.yml`: PostgreSQL logical replication + Debezium 설정
-    - `outbox-connector.json`: Outbox Event Router 설정
+    - `docker-compose.yml`: PostgreSQL logical replication + Debezium Connector 설정
+    - `scripts/outbox-connector.json`: Outbox Event Router 설정
+    - WAL 기반 실시간 감지로 100ms 내외 지연시간 달성
   - **OutboxEventHandler**: CDC 이벤트 수신 및 비즈니스 로직 처리
+    - 토픽 패턴 기반 이벤트 수신 (`USER_.*|STUDY_GROUP_.*|ANALYSIS_.*|NOTIFICATION_.*`)
+    - 병렬 처리를 위한 concurrency 설정
+    - 이벤트 타입별 비즈니스 로직 라우팅
   - **OutboxEventRepository**: 폴링 제거, 조회/정리 작업 중심으로 단순화
   - **OutboxService**: 이벤트 발행 및 JSON 변환 기능
 - **성능 향상**:
   - **실시간 발행**: INSERT 즉시 Kafka 발행 (5초 폴링 지연 제거)
   - **DB 부하 제거**: 초당 0.2회 폴링 쿼리 완전 제거
   - **확장성**: 이벤트 양 증가와 무관하게 일정한 성능
+  - **지연시간 단축**: 최대 5초 → 100ms 내외
 - **커밋 내역**:
   - `test: Red - Outbox Pattern 기본 구조 테스트 작성` (c6216bc)
   - `feat: Green - Outbox Pattern 기본 구조 구현` (0756f9e)
+  - `refactor: Refactor - CDC 기반 Outbox Pattern으로 아키텍처 전환` (2f5415c)
 
 ## 📈 **Phase 0 진행률**
 
