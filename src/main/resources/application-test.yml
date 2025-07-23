@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:algoreport_test
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: algoreport-test
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+logging:
+  level:
+    com.algoreport: WARN
+    org.springframework: WARN
+    org.hibernate: WARN

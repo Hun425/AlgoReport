@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:algoreport_dev
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: algoreport-dev
+      auto-offset-reset: earliest
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      
+  elasticsearch:
+    uris: http://localhost:9200
+
+logging:
+  level:
+    org.springframework.kafka: DEBUG

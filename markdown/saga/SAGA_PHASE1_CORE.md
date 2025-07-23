@@ -1,6 +1,6 @@
 # Phase 1 핵심 Saga 설계
 
-이 문서는 **알고리포트 Phase 1에서 구현해야 하는 6개 핵심 Saga**의 상세 설계를 다룹니다. 이들은 플랫폼의 기본 기능을 위해 반드시 필요한 분산 트랜잭션들입니다.
+이 문서는 **알고리포트 Phase 1에서 구현해야 하는 9개 핵심 Saga**의 상세 설계를 다룹니다. 이들은 플랫폼의 기본 기능을 위해 반드시 필요한 분산 트랜잭션들입니다.
 
 ---
 
@@ -13,8 +13,10 @@
 | 3 | `SOLVEDAC_LINK_SAGA` | High | 사용자 요청 | User, Analysis, StudyGroup, Notification | 🔥 Critical |
 | 4 | `CREATE_GROUP_SAGA` | Medium | 사용자 요청 | StudyGroup, User, Analysis, Notification | 🔥 Critical |
 | 5 | `JOIN_GROUP_SAGA` | High | 사용자 요청 | StudyGroup, User, Analysis, Notification | 🔥 Critical |
-| 6 | `SUBMISSION_SYNC_SAGA` | Medium | 스케줄러 | Analysis, StudyGroup, Notification | 🟡 Important |
-| 7 | `ANALYSIS_UPDATE_SAGA` | Medium | 스케줄러 | Analysis, StudyGroup, Notification | 🟡 Important |
+| 6 | `USER_PROFILE_UPDATE_SAGA` | Medium | 사용자 요청 | User, Analysis, StudyGroup, Notification | 🔥 Critical |
+| 7 | `SUBMISSION_SYNC_SAGA` | Medium | 스케줄러 | Analysis, StudyGroup, Notification | 🟡 Important |
+| 8 | `ANALYSIS_UPDATE_SAGA` | Medium | 스케줄러 | Analysis, StudyGroup, Notification | 🟡 Important |
+| 9 | `PERSONAL_STATS_REFRESH_SAGA` | Medium | 스케줄러/사용자 요청 | Analysis, User, Notification | 🟡 Important |
 
 ---
 
@@ -894,6 +896,230 @@ class UserRegistrationSagaTest {
 
 ---
 
-📝 **문서 버전**: v1.0  
+### **6. USER_PROFILE_UPDATE_SAGA**
+
+**목표**: 사용자 프로필 정보 업데이트와 모든 관련 모듈의 데이터 동기화
+
+#### **비즈니스 요구사항**
+- 닉네임, 프로필 이미지, 개인 설정 등 프로필 정보 변경
+- 모든 모듈에서 사용자 정보 일관성 유지
+- 참여 중인 스터디 그룹의 멤버 정보 동기화
+- 프로필 변경 이력 추적
+
+#### **Saga 흐름도**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant U as User Module
+    participant A as Analysis Module
+    participant SG as StudyGroup Module
+    participant N as Notification Module
+    participant K as Kafka
+
+    Note over Client,K: 🔄 USER_PROFILE_UPDATE_SAGA
+    
+    Client->>U: PATCH /users/me/profile {nickname, profileImage, ...}
+    
+    rect rgb(255, 240, 240)
+        Note over U: Step 1: 프로필 정보 업데이트
+        U->>U: 닉네임 중복 체크
+        U->>U: 프로필 정보 검증 및 업데이트
+        U->>U: 변경 이력 저장
+        U->>U: Outbox에 이벤트 저장
+        U-->>K: USER_PROFILE_UPDATED 발행
+    end
+    
+    rect rgb(240, 255, 240)
+        Note over A: Step 2: 분석 모듈 프로필 동기화
+        K->>A: USER_PROFILE_UPDATED 수신
+        A->>A: USER_PROFILES_SYNC 테이블 업데이트
+        A->>A: 분석 결과와 연결된 사용자 정보 갱신
+        A->>A: Outbox에 이벤트 저장
+        A-->>K: ANALYSIS_PROFILE_SYNCED 발행
+    end
+    
+    rect rgb(240, 240, 255)
+        Note over SG: Step 3: 스터디 그룹 멤버 정보 동기화
+        K->>SG: USER_PROFILE_UPDATED 수신
+        SG->>SG: 사용자가 속한 모든 그룹 조회
+        loop 각 그룹별로
+            SG->>SG: 그룹 멤버 프로필 업데이트
+            SG->>SG: 그룹 멤버 목록 갱신
+        end
+        SG->>SG: Outbox에 이벤트 저장
+        SG-->>K: GROUP_MEMBER_PROFILES_UPDATED 발행
+    end
+    
+    rect rgb(255, 255, 240)
+        Note over N: Step 4: 프로필 변경 알림
+        K->>N: USER_PROFILE_UPDATED 수신
+        N->>N: 중요한 변경사항 감지 (닉네임 변경 등)
+        alt 중요한 변경사항 있음
+            N->>N: 관련 그룹원들에게 알림
+            N->>N: Outbox에 이벤트 저장
+            N-->>K: PROFILE_CHANGE_NOTIFICATION_SENT 발행
+        end
+    end
+    
+    U-->>Client: 프로필 업데이트 완료 응답
+```
+
+#### **이벤트 명세**
+
+##### `USER_PROFILE_UPDATED`
+```json
+{
+  "eventType": "USER_PROFILE_UPDATED",
+  "aggregateId": "user-{uuid}",
+  "sagaId": "{saga-uuid}",
+  "data": {
+    "userId": "{uuid}",
+    "changes": {
+      "nickname": {"old": "기존닉네임", "new": "새닉네임"},
+      "profileImageUrl": {"old": "old_url", "new": "new_url"}
+    },
+    "updatedAt": "2025-07-22T10:30:00Z"
+  }
+}
+```
+
+#### **보상 트랜잭션**
+
+```mermaid
+sequenceDiagram
+    participant U as User Module
+    participant A as Analysis Module  
+    participant SG as StudyGroup Module
+    participant K as Kafka
+
+    Note over U,K: 💥 Step 2 실패 시나리오 (분석 모듈 동기화 실패)
+    
+    rect rgb(255, 200, 200)
+        Note over A: 분석 모듈 프로필 동기화 실패
+        A->>A: syncUserProfile() [DB 오류]
+        A->>A: Outbox에 실패 이벤트 저장
+        A-->>K: ANALYSIS_PROFILE_SYNC_FAILED 발행
+    end
+    
+    rect rgb(255, 200, 200)
+        Note over U: 보상: 프로필 변경 롤백
+        K->>U: ANALYSIS_PROFILE_SYNC_FAILED 수신
+        U->>U: 프로필 정보를 이전 상태로 복원
+        U->>U: Outbox에 보상 이벤트 저장
+        U-->>K: USER_PROFILE_UPDATE_REVERTED 발행
+    end
+```
+
+---
+
+### **9. PERSONAL_STATS_REFRESH_SAGA**
+
+**목표**: 개인 마이페이지용 통계 데이터 갱신 및 캐시 업데이트
+
+#### **비즈니스 요구사항**
+- 개인 학습 통계 실시간 갱신
+- 마이페이지 대시보드 데이터 최신화
+- 성취도/배지 시스템 업데이트
+- 개인 랭킹 정보 갱신
+
+#### **Saga 흐름도**
+
+```mermaid
+sequenceDiagram
+    participant Scheduler as Scheduler/Client
+    participant A as Analysis Module
+    participant U as User Module
+    participant N as Notification Module
+    participant R as Redis Cache
+    participant K as Kafka
+
+    Note over Scheduler,K: 🔄 PERSONAL_STATS_REFRESH_SAGA (일간 실행 또는 사용자 요청)
+    
+    Scheduler->>A: triggerPersonalStatsRefresh(userId) 또는 스케줄러 실행
+    
+    rect rgb(255, 240, 240)
+        Note over A: Step 1: 개인 통계 데이터 분석
+        A->>A: 최근 30일 제출 데이터 집계
+        A->>A: 태그별 숙련도 재계산
+        A->>A: 문제 해결 트렌드 분석
+        A->>A: 개인 랭킹 계산
+        A->>A: 성취도 진척상황 확인
+        A->>A: Outbox에 이벤트 저장
+        A-->>K: PERSONAL_STATS_UPDATED 발행
+    end
+    
+    rect rgb(240, 255, 240)
+        Note over U: Step 2: 사용자 프로필 통계 동기화
+        K->>U: PERSONAL_STATS_UPDATED 수신
+        U->>U: 사용자 프로필의 요약 통계 업데이트
+        U->>U: 최고 티어, 해결 문제 수 등 기본 정보 갱신
+        U->>U: Outbox에 이벤트 저장
+        U-->>K: USER_STATS_SYNCED 발행
+    end
+    
+    rect rgb(240, 240, 255)
+        Note over R: Step 3: 캐시 데이터 갱신
+        K->>A: USER_STATS_SYNCED 수신 (자체 처리)
+        A->>R: 개인 대시보드 캐시 업데이트
+        A->>R: 추천 문제 캐시 갱신
+        A->>R: 학습 패턴 분석 캐시 갱신
+        A->>A: Outbox에 이벤트 저장
+        A-->>K: PERSONAL_CACHE_REFRESHED 발행
+    end
+    
+    rect rgb(255, 255, 240)
+        Note over N: Step 4: 성취 및 개선사항 알림
+        K->>N: PERSONAL_CACHE_REFRESHED 수신
+        N->>N: 새로운 성취 감지 (레벨업, 새 배지 등)
+        N->>N: 학습 패턴 개선사항 분석
+        alt 알림할 내용 있음
+            N->>N: 개인 성취 알림 생성
+            N->>N: 학습 개선 제안 알림
+            N->>N: Outbox에 이벤트 저장
+            N-->>K: PERSONAL_ACHIEVEMENT_NOTIFICATION_SENT 발행
+        end
+    end
+```
+
+#### **이벤트 명세**
+
+##### `PERSONAL_STATS_UPDATED`
+```json
+{
+  "eventType": "PERSONAL_STATS_UPDATED",
+  "aggregateId": "personal-stats-{uuid}",
+  "sagaId": "{saga-uuid}",
+  "data": {
+    "userId": "{uuid}",
+    "statsData": {
+      "solvedProblemsCount": 425,
+      "currentTier": "gold3",
+      "tagProficiency": {
+        "implementation": 85,
+        "math": 70,
+        "dp": 45
+      },
+      "weeklyActivity": [3, 5, 2, 4, 1, 0, 3],
+      "personalRanking": {
+        "overall": 1250,
+        "weeklyGrowth": 45
+      }
+    },
+    "achievements": [
+      {
+        "type": "PROBLEM_MILESTONE",
+        "title": "문제 해결 400개 달성",
+        "unlockedAt": "2025-07-22T10:30:00Z"
+      }
+    ],
+    "refreshedAt": "2025-07-22T10:30:00Z"
+  }
+}
+```
+
+---
+
+📝 **문서 버전**: v1.1 (마이페이지 SAGA 추가)  
 📅 **최종 수정일**: 2025-07-22  
 👤 **작성자**: 채기훈

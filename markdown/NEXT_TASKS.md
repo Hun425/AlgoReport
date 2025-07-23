@@ -1,110 +1,284 @@
-# 다음 할 일 및 우선순위 (알고리포트 전체 개발 마스터 플랜)
+# 다음 할 일 및 우선순위 (SAGA 패턴 기반 TDD 마스터 플랜)
 
 ## 📊 작업 현황 개요
 
 - **프로젝트명**: 알고리포트 (Algo-Report)
-    
-- **핵심 컨셉**: `solved.ac` 사용자/그룹의 문제 해결 이력을 분석하여 학습 패턴 시각화, 강점/약점 분석, 맞춤 문제 추천 및 스터디 자동 관리를 제공하는 플랫폼.
-    
-- **총 등록 작업**: 17개
-    
-- **완료 대기 작업**: 17개
-    
+- **핵심 컨셉**: `solved.ac` 사용자/그룹의 문제 해결 이력을 분석하여 학습 패턴 시각화, 강점/약점 분석, 맞춤 문제 추천 및 스터디 자동 관리를 제공하는 플랫폼
+- **아키텍처**: 모듈형 모놀리스 + SAGA 패턴 + TDD
+- **총 등록 작업**: 45개 (마이페이지 SAGA 추가)
+- **완료 대기 작업**: 45개
 - **진행중 작업**: 0개
-    
 - **마지막 업데이트**: 2025-07-22
+
+---
+
+## 🎯 **SAGA 우선순위 및 복잡도 매트릭스**
+
+| 순서 | SAGA 이름 | 복잡도 | 우선순위 | TDD 적용 난이도 | 예상 소요일 |
+|-----|----------|-------|--------|-------------|-----------|
+| 1 | `INITIAL_DATA_SYNC_SAGA` | Very High | 🔥 Critical | High | 3-4일 |
+| 2 | `USER_REGISTRATION_SAGA` | Medium | 🔥 Critical | Low | 1일 |
+| 3 | `SOLVEDAC_LINK_SAGA` | High | 🔥 Critical | Medium | 2일 |
+| 4 | `CREATE_GROUP_SAGA` | Medium | 🔥 Critical | Medium | 1-2일 |
+| 5 | `JOIN_GROUP_SAGA` | High | 🔥 Critical | High | 2-3일 |
+| 6 | `USER_PROFILE_UPDATE_SAGA` | Medium | 🔥 Critical | Medium | 1일 |
+| 7 | `SUBMISSION_SYNC_SAGA` | Medium | 🟡 Important | Medium | 1-2일 |
+| 8 | `ANALYSIS_UPDATE_SAGA` | Medium | 🟡 Important | Medium | 2일 |
+| 9 | `PERSONAL_STATS_REFRESH_SAGA` | Medium | 🟡 Important | Medium | 1-2일 |
     
 
-### **Phase 0: 개발 환경 및 프로젝트 초기 설정 (High Priority)**
+---
+
+## Phase 0: 프로젝트 기반 구축 🔥 **Critical**
 
 **목표**: 모든 개발을 시작하기 위한 기반을 완벽하게 구축합니다.
 
-#### **Task 0-1: 코프링(Kotlin+Spring) 프로젝트 생성**
+### **📋 Phase 0 세부 작업 계획**
 
+#### **0.1 프로젝트 초기 설정** 🔥 **최우선**
+
+##### **Task 0-1-1: Kotlin+Spring Boot 프로젝트 생성**
 - **담당자**: 채기훈
-    
 - **예상 소요시간**: 1시간
-    
 - **현재 상태**: **대기 ⏳ (가장 먼저 시작할 작업)**
-    
-- **우선순위 사유**: 모든 백엔드 개발의 시작점.
-    
+- **TDD 적용**: X (프로젝트 설정)
 - **완료 기준**:
-    
-    - [ ] Spring Initializr로 프로젝트 생성 (`Kotlin`, `Gradle`, `Spring Boot 3.2.x`, `Java 17`)
-        
-    - [ ] `build.gradle.kts`에 아래 필수 의존성 추가
-        
-        - `web`, `jpa`, `kafka`, `redis`, `spring-security`
-            
-        - `org.springframework.boot:spring-boot-starter-oauth2-client`
-            
-        - `org.springframework.boot:spring-boot-starter-data-elasticsearch`
-            
-    - [ ] `./gradlew build` 명령어로 초기 빌드 성공 확인
-        
-    - [ ] `.gitignore` 파일에 `.idea/`, `build/` 등 불필요한 파일/디렉토리 추가
-        
+  - [ ] Spring Initializr로 프로젝트 생성 (`Kotlin`, `Gradle`, `Spring Boot 3.2.x`, `Java 17`)
+  - [ ] `build.gradle.kts`에 필수 의존성 추가
+    - `web`, `jpa`, `kafka`, `redis`, `spring-security`
+    - `org.springframework.boot:spring-boot-starter-oauth2-client`
+    - `org.springframework.boot:spring-boot-starter-data-elasticsearch`
+  - [ ] `./gradlew build` 명령어로 초기 빌드 성공 확인
+  - [ ] `.gitignore` 파일에 `.idea/`, `build/` 등 불필요한 파일/디렉토리 추가
 
-### **Phase 1: `solved.ac` 데이터 파이프라인 구축 (Medium Priority)**
+##### **Task 0-1-2: 기본 의존성 설정**
+- **예상 소요시간**: 30분
+- **TDD 적용**: X
+- **완료 기준**:
+  - [ ] MockK, Kotest 테스트 의존성 추가
+  - [ ] Spring Boot Test 설정 확인
 
-**목표**: `solved.ac` API에서 데이터를 수집하여 분석 엔진까지 전달하는 핵심 데이터 파이프라인을 완성합니다.
+##### **Task 0-1-3: 모듈 구조 생성**
+- **예상 소요시간**: 1시간
+- **TDD 적용**: X
+- **완료 기준**:
+  - [ ] `com.algoreport.module.user` 패키지 생성
+  - [ ] `com.algoreport.module.studygroup` 패키지 생성
+  - [ ] `com.algoreport.module.analysis` 패키지 생성
+  - [ ] `com.algoreport.module.notification` 패키지 생성
+  - [ ] `com.algoreport.config` 패키지 생성
 
-#### **Task 1-1: 데이터베이스 모델링 (JPA Entity)**
+##### **Task 0-1-4: 개발/테스트 프로필 설정**
+- **예상 소요시간**: 30분
+- **TDD 적용**: X
+- **완료 기준**:
+  - [ ] `application-dev.yml` 생성
+  - [ ] `application-test.yml` 생성
+  - [ ] H2 테스트 데이터베이스 설정
 
-- **담당자**: 채기훈
-    
+#### **0.2 Docker 인프라 구성**
+
+##### **Task 0-2-1: docker-compose.yml 작성**
+- **예상 소요시간**: 1시간
+- **TDD 적용**: X
+- **완료 기준**:
+  - [ ] PostgreSQL 컨테이너 설정
+  - [ ] Redis 컨테이너 설정
+  - [ ] Kafka + Zookeeper 컨테이너 설정
+  - [ ] Elasticsearch + Kibana 컨테이너 설정
+
+##### **Task 0-2-2: 데이터베이스 초기 스키마 설정**
+- **예상 소요시간**: 30분
+- **TDD 적용**: X
+- **완료 기준**:
+  - [ ] PostgreSQL 초기 데이터베이스 생성
+  - [ ] JPA DDL 설정 확인
+
+##### **Task 0-2-3: Kafka 토픽 초기 설정**
+- **예상 소요시간**: 30분
+- **TDD 적용**: X
+- **완료 기준**:
+  - [ ] `new-submission` 토픽 생성
+  - [ ] `study-group-alert` 토픽 생성
+  - [ ] Kafka 연결 테스트
+
+#### **0.3 공통 인프라 구현** (TDD 적용)
+
+##### **Task 0-3-1: 전역 예외 처리 구현**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Red-Green-Refactor
+- **완료 기준**:
+  - [ ] **[RED]** CustomException 클래스 테스트 작성
+  - [ ] **[GREEN]** CustomException + Error enum 구현
+  - [ ] **[REFACTOR]** GlobalExceptionHandler 구현
+  - [ ] 각 단계마다 즉시 커밋
+
+##### **Task 0-3-2: OAuth2 + JWT 보안 설정 기본 구조**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Red-Green-Refactor
+- **완료 기준**:
+  - [ ] **[RED]** SecurityConfig 테스트 작성
+  - [ ] **[GREEN]** 기본 OAuth2 설정 구현
+  - [ ] **[REFACTOR]** JWT 토큰 처리 로직 개선
+  - [ ] 각 단계마다 즉시 커밋
+
+##### **Task 0-3-3: Outbox Pattern 기본 구현**
 - **예상 소요시간**: 3시간
-    
-- **현재 상태**: 대기 ⏳
-    
-- **의존성**: Task 0-1 완료
-    
+- **TDD 적용**: ✅ Red-Green-Refactor
 - **완료 기준**:
-    
-    - [ ] `USERS`, `SOLVEDAC_USERS`, `SUBMISSIONS`, `STUDY_GROUPS`, `STUDY_GROUP_RULES` 등 핵심 Entity 클래스 작성
-        
-    - [ ] 각 Entity 간의 관계(`@OneToMany`, `@ManyToOne` 등) 정확히 매핑
-        
-    - [ ] H2 DB 환경에서 테스트 실행 시 테이블 자동 생성 확인
+  - [ ] **[RED]** OutboxEvent 엔티티 테스트 작성
+  - [ ] **[GREEN]** 기본 Outbox 구조 구현
+  - [ ] **[REFACTOR]** 이벤트 발행 인프라 완성
+  - [ ] 각 단계마다 즉시 커밋
+
+**Phase 0 예상 총 소요시간**: 2-3일
         
 
-#### **Task 1-2: 데이터 수집기 구현 (Scheduler)**
+---
 
-- **담당자**: 채기훈
-    
+## Phase 1: 핵심 데이터 파이프라인 구축 🔥 **Critical**
+
+**목표**: SAGA 패턴 기반으로 solved.ac 데이터 수집부터 분석까지 핵심 파이프라인을 완성합니다.
+
+### **📋 Phase 1 SAGA 기반 세부 작업 계획**
+
+#### **1.1 INITIAL_DATA_SYNC_SAGA 구현** 🔥 **최우선** (가장 복잡한 SAGA)
+
+##### **Task 1-1-1: [RED] solved.ac API 클라이언트 테스트 작성**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Red 단계
+- **완료 기준**:
+  - [ ] **[RED]** SolvedacApiClient 인터페이스 테스트 작성
+  - [ ] **[RED]** 사용자 정보 조회 API 테스트 작성  
+  - [ ] **[RED]** 제출 이력 조회 API 테스트 작성
+  - [ ] 테스트 실패 확인 후 즉시 커밋: `test: Red - solved.ac API 클라이언트 기본 구조`
+
+##### **Task 1-1-2: [GREEN] solved.ac API 클라이언트 기본 구현**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Green 단계
+- **완료 기준**:
+  - [ ] **[GREEN]** SolvedacApiClient 기본 구현 (최소한의 코드)
+  - [ ] **[GREEN]** RestTemplate 기반 API 호출 로직
+  - [ ] 모든 테스트 통과 확인 후 즉시 커밋: `feat: Green - solved.ac API 클라이언트 기본 구현`
+
+##### **Task 1-1-3: [REFACTOR] API 클라이언트 구조 개선**
+- **예상 소요시간**: 1시간
+- **TDD 적용**: ✅ Refactor 단계
+- **완료 기준**:
+  - [ ] **[REFACTOR]** 코드 구조 개선 (가독성, 확장성)
+  - [ ] **[REFACTOR]** 에러 처리 로직 추가
+  - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - API 클라이언트 구조 개선`
+
+##### **Task 1-1-4: [RED] 대용량 배치 수집 테스트 작성**
+- **예상 소요시간**: 3시간
+- **TDD 적용**: ✅ Red 단계
+- **완료 기준**:
+  - [ ] **[RED]** 배치 데이터 수집 서비스 테스트 작성
+  - [ ] **[RED]** 100개씩 나누어 수집하는 로직 테스트
+  - [ ] **[RED]** 체크포인트 저장 로직 테스트
+  - [ ] 테스트 실패 확인 후 즉시 커밋: `test: Red - 대용량 배치 수집 기본 구조`
+
+##### **Task 1-1-5: [GREEN] 배치 수집 로직 구현**
 - **예상 소요시간**: 4시간
-    
-- **현재 상태**: 대기 ⏳
-    
-- **의존성**: Task 1-1 완료
-    
+- **TDD 적용**: ✅ Green 단계
 - **완료 기준**:
-    
-    - [ ] `@Scheduled`를 사용해 주기적으로 `solved.ac` API를 호출하여 등록된 사용자의 최신 문제 해결 이력을 가져오는 스케줄러 구현
-        
-    - [ ] 이전에 수집한 마지막 제출 ID를 기반으로, 새로운 제출 기록만 필터링하는 로직 구현
-        
-    - [ ] 새로 발견된 제출 이벤트를 `KafkaProducer`를 사용해 `new-submission` 토픽으로 발행
-        
+  - [ ] **[GREEN]** 배치별 데이터 수집 로직 구현 (100개씩)
+  - [ ] **[GREEN]** 수집 진행률 추적 로직
+  - [ ] **[GREEN]** 기본 체크포인트 저장 구현
+  - [ ] 모든 테스트 통과 확인 후 즉시 커밋: `feat: Green - 배치 수집 로직 구현`
 
-#### **Task 1-3: 데이터 분석/저장 서비스 구현**
-
-- **담당자**: 채기훈
-    
-- **예상 소요시간**: 4시간
-    
-- **현재 상태**: 대기 ⏳
-    
-- **의존성**: Task 1-2 완료
-    
+##### **Task 1-1-6: [REFACTOR] 체크포인트 기반 복구 시스템**
+- **예상 소요시간**: 3시간
+- **TDD 적용**: ✅ Refactor 단계
 - **완료 기준**:
-    
-    - [ ] `new-submission` 토픽을 구독하는 `@KafkaListener` 구현
-        
-    - [ ] 수신한 제출 데이터를 분석/가공하여 Elasticsearch에 시계열 데이터로 저장
-        
-    - [ ] Kibana 대시보드를 통해 Elasticsearch에 데이터가 정상적으로 쌓이는지 시각적 확인
+  - [ ] **[REFACTOR]** DataSyncCheckpoint 엔티티 완성
+  - [ ] **[REFACTOR]** 실패 시 체크포인트부터 재시작 로직
+  - [ ] **[REFACTOR]** 복구 불가능한 실패 상황 처리
+  - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - 체크포인트 기반 복구 시스템`
+
+##### **Task 1-1-7: [RED] 레이트 리밋 처리 테스트**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Red 단계
+- **완료 기준**:
+  - [ ] **[RED]** API 레이트 리밋 감지 테스트
+  - [ ] **[RED]** 지수 백오프 재시도 테스트
+  - [ ] **[RED]** 최대 재시도 횟수 제한 테스트
+  - [ ] 테스트 실패 확인 후 즉시 커밋: `test: Red - 레이트 리밋 처리 구조`
+
+##### **Task 1-1-8: [GREEN] 지수 백오프 재시도 로직**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Green 단계
+- **완료 기준**:
+  - [ ] **[GREEN]** Resilience4j 기반 재시도 로직
+  - [ ] **[GREEN]** 1분 대기 후 재시도 구현
+  - [ ] **[GREEN]** 최대 3회 재시도 제한
+  - [ ] 모든 테스트 통과 확인 후 즉시 커밋: `feat: Green - 지수 백오프 재시도 로직`
+
+##### **Task 1-1-9: [REFACTOR] 전체 SAGA 최적화**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Refactor 단계
+- **완료 기준**:
+  - [ ] **[REFACTOR]** INITIAL_DATA_SYNC_SAGA 통합 및 최적화
+  - [ ] **[REFACTOR]** 보상 트랜잭션 완성
+  - [ ] **[REFACTOR]** 성능 튜닝 및 모니터링 추가
+  - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - INITIAL_DATA_SYNC_SAGA 최적화`
+
+#### **1.2 SUBMISSION_SYNC_SAGA 구현**
+
+##### **Task 1-2-1: [RED] 실시간 제출 동기화 테스트**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: ✅ Red-Green-Refactor
+- **완료 기준**:
+  - [ ] **[RED]** 실시간 제출 동기화 SAGA 테스트 작성
+  - [ ] **[GREEN]** 기본 동기화 로직 구현
+  - [ ] **[REFACTOR]** 코드 품질 개선
+  - [ ] 각 단계마다 즉시 커밋
+
+##### **Task 1-2-2: [GREEN] 5분마다 스케줄링 구현**
+- **예상 소요시간**: 1시간
+- **TDD 적용**: ✅ Red-Green-Refactor
+- **완료 기준**:
+  - [ ] **[RED]** 스케줄링 로직 테스트
+  - [ ] **[GREEN]** @Scheduled 기반 구현
+  - [ ] **[REFACTOR]** 스케줄러 최적화
+  - [ ] 각 단계마다 즉시 커밋
+
+##### **Task 1-2-3: [REFACTOR] 성능 최적화**
+- **예상 소요시간**: 1시간
+- **TDD 적용**: ✅ Refactor
+- **완료 기준**:
+  - [ ] 배치 처리 성능 개선
+  - [ ] 메모리 사용량 최적화
+  - [ ] 즉시 커밋: `refactor: Refactor - SUBMISSION_SYNC_SAGA 성능 최적화`
+
+#### **1.3 데이터 저장소 설정**
+
+##### **Task 1-3-1: JPA Entity 설계 및 구현**
+- **예상 소요시간**: 3시간
+- **TDD 적용**: ✅ Red-Green-Refactor
+- **완료 기준**:
+  - [ ] **[RED]** User, Submission, Problem 엔티티 테스트
+  - [ ] **[GREEN]** JPA 엔티티 기본 구현
+  - [ ] **[REFACTOR]** 연관관계 최적화
+  - [ ] 각 단계마다 즉시 커밋
+
+##### **Task 1-3-2: Elasticsearch 인덱스 설정**
+- **예상 소요시간**: 2시간
+- **TDD 적용**: X (인프라 설정)
+- **완료 기준**:
+  - [ ] submissions-{YYYY.MM} 인덱스 설정
+  - [ ] problem-metadata 인덱스 설정
+  - [ ] 인덱스 매핑 및 설정 최적화
+
+##### **Task 1-3-3: Redis 캐시 구조 설정**
+- **예상 소요시간**: 1시간
+- **TDD 적용**: X (인프라 설정)
+- **완료 기준**:
+  - [ ] 캐시 키 구조 설계
+  - [ ] TTL 설정 및 캐시 정책 수립
+  - [ ] Redis 연결 테스트
+
+**Phase 1 예상 총 소요시간**: 5-7일
         
 
 ### **Phase 2: 사용자 및 스터디 그룹 관리 구현 (Medium Priority)**
