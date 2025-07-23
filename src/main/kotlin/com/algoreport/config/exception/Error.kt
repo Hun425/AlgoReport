@@ -24,6 +24,7 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "해당 사용자를 찾을 수 없습니다."),
     STUDY_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "E40402", "해당 스터디 그룹을 찾을 수 없습니다."),
     SOLVEDAC_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40403", "solved.ac에서 해당 핸들을 찾을 수 없습니다."),
+    PROBLEM_NOT_FOUND(HttpStatus.NOT_FOUND, "E40404", "해당 문제를 찾을 수 없습니다."),
     
     // 409 CONFLICT
     ALREADY_EXISTS_USER(HttpStatus.CONFLICT, "E40901", "이미 존재하는 사용자입니다."),

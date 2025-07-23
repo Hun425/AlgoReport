@@ -1,6 +1,11 @@
 package com.algoreport.collector
 
 import com.algoreport.collector.dto.*
+import com.algoreport.config.exception.CustomException
+import com.algoreport.config.exception.Error
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Component
+import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
 
 /**
@@ -39,62 +44,93 @@ interface SolvedacApiClient {
 /**
  * solved.ac API 클라이언트 구현체
  * 
- * TDD Green 단계: 테스트가 통과하도록 최소한의 구현
+ * TDD Refactor 단계: 코드 구조 개선 및 에러 처리 강화
  */
-class SolvedacApiClient(
+@Component
+class SolvedacApiClientImpl(
     private val restTemplate: RestTemplate
 ) : SolvedacApiClient {
+    
+    private val logger = LoggerFactory.getLogger(SolvedacApiClientImpl::class.java)
     
     companion object {
         private const val SOLVEDAC_API_BASE_URL = "https://solved.ac/api/v3"
     }
     
     override fun getUserInfo(handle: String): UserInfo {
-        // Green 단계: 테스트가 통과하도록 최소한의 구현
+        validateHandle(handle)
+        
         return try {
             val url = "$SOLVEDAC_API_BASE_URL/user/show?handle=$handle"
-            restTemplate.getForObject(url, UserInfo::class.java) ?: UserInfo(handle = handle)
-        } catch (e: Exception) {
-            // 테스트 통과를 위한 기본값 반환
-            UserInfo(handle = handle)
+            logger.debug("Fetching user info for handle: {}", handle)
+            
+            val result = restTemplate.getForObject(url, UserInfo::class.java)
+                ?: throw CustomException(Error.SOLVEDAC_USER_NOT_FOUND)
+            
+            logger.info("Successfully fetched user info for handle: {}", handle)
+            result
+        } catch (e: RestClientException) {
+            logger.error("Failed to fetch user info for handle: {}", handle, e)
+            throw CustomException(Error.SOLVEDAC_USER_NOT_FOUND)
         }
     }
     
     override fun getSubmissions(handle: String, page: Int): SubmissionList {
-        // Green 단계: 테스트가 통과하도록 최소한의 구현
+        validateHandle(handle)
+        validatePage(page)
+        
         return try {
             val url = "$SOLVEDAC_API_BASE_URL/search/submission?query=user:$handle&page=$page"
-            restTemplate.getForObject(url, SubmissionList::class.java) ?: SubmissionList(count = 0, items = emptyList())
-        } catch (e: Exception) {
-            // 테스트 통과를 위한 기본값 반환
-            SubmissionList(count = 0, items = emptyList())
+            logger.debug("Fetching submissions for handle: {}, page: {}", handle, page)
+            
+            val result = restTemplate.getForObject(url, SubmissionList::class.java)
+                ?: SubmissionList(count = 0, items = emptyList())
+            
+            logger.info("Successfully fetched {} submissions for handle: {}, page: {}", 
+                       result.items.size, handle, page)
+            result
+        } catch (e: RestClientException) {
+            logger.error("Failed to fetch submissions for handle: {}, page: {}", handle, page, e)
+            throw CustomException(Error.SOLVEDAC_API_ERROR)
         }
     }
     
     override fun getProblemInfo(problemId: Int): ProblemInfo {
-        // Green 단계: 테스트가 통과하도록 최소한의 구현
+        validateProblemId(problemId)
+        
         return try {
             val url = "$SOLVEDAC_API_BASE_URL/problem/show?problemId=$problemId"
-            restTemplate.getForObject(url, ProblemInfo::class.java) ?: ProblemInfo(
-                problemId = problemId,
-                titleKo = "Unknown Problem",
-                titles = emptyList(),
-                level = 0,
-                acceptedUserCount = 0,
-                averageTries = 0.0,
-                tags = emptyList()
-            )
-        } catch (e: Exception) {
-            // 테스트 통과를 위한 기본값 반환
-            ProblemInfo(
-                problemId = problemId,
-                titleKo = "Unknown Problem",
-                titles = emptyList(),
-                level = 0,
-                acceptedUserCount = 0,
-                averageTries = 0.0,
-                tags = emptyList()
-            )
+            logger.debug("Fetching problem info for problemId: {}", problemId)
+            
+            val result = restTemplate.getForObject(url, ProblemInfo::class.java)
+                ?: throw CustomException(Error.PROBLEM_NOT_FOUND)
+            
+            logger.info("Successfully fetched problem info for problemId: {}", problemId)
+            result
+        } catch (e: RestClientException) {
+            logger.error("Failed to fetch problem info for problemId: {}", problemId, e)
+            throw CustomException(Error.PROBLEM_NOT_FOUND)
+        }
+    }
+    
+    private fun validateHandle(handle: String) {
+        if (handle.isBlank()) {
+            throw CustomException(Error.INVALID_INPUT)
+        }
+        if (handle.length > 50) {
+            throw CustomException(Error.INVALID_INPUT)
+        }
+    }
+    
+    private fun validatePage(page: Int) {
+        if (page < 1 || page > 1000) {
+            throw CustomException(Error.INVALID_INPUT)
+        }
+    }
+    
+    private fun validateProblemId(problemId: Int) {
+        if (problemId < 1) {
+            throw CustomException(Error.INVALID_INPUT)
         }
     }
 }
