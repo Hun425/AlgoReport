@@ -11,51 +11,22 @@ import java.time.LocalDateTime
 import java.util.*
 
 /**
- * OutboxEvent 데이터 접근 레포지토리
+ * CDC 기반 OutboxEvent 데이터 접근 레포지토리
  * 
- * Outbox Pattern의 핵심 데이터 접근 기능을 제공합니다:
- * - 미처리 이벤트 조회
- * - 재시도 대상 이벤트 조회
- * - 이벤트 상태 업데이트
- * - 집합체/SAGA별 이벤트 조회
+ * CDC 방식에서는 INSERT 시점에 즉시 Kafka로 발행되므로:
+ * - 폴링 관련 쿼리 제거
+ * - 재시도 로직 제거 (Kafka Consumer 재시도 활용)
+ * - 조회 및 정리 작업에 집중
  */
 @Repository
 interface OutboxEventRepository : JpaRepository<OutboxEvent, UUID> {
     
     /**
-     * 미처리 이벤트 조회 (처리되지 않았고 최대 재시도 횟수를 초과하지 않은 이벤트)
-     * 
-     * @param pageable 페이징 정보
-     * @return 미처리 이벤트 목록
+     * 처리되지 않은 이벤트 조회 (모니터링용)
+     * CDC에서는 INSERT 즉시 발행되므로 미처리 이벤트는 거의 없어야 함
      */
-    @Query("""
-        SELECT e FROM OutboxEvent e 
-        WHERE e.processed = false 
-        AND e.retryCount < e.maxRetries
-        AND (e.nextRetryAt IS NULL OR e.nextRetryAt <= CURRENT_TIMESTAMP)
-        ORDER BY e.createdAt ASC
-    """)
+    @Query("SELECT e FROM OutboxEvent e WHERE e.processed = false ORDER BY e.createdAt ASC")
     fun findUnprocessedEvents(pageable: Pageable): List<OutboxEvent>
-    
-    /**
-     * 재시도 대상 이벤트 조회
-     * 
-     * @param currentTime 현재 시간
-     * @param pageable 페이징 정보
-     * @return 재시도 가능한 이벤트 목록
-     */
-    @Query("""
-        SELECT e FROM OutboxEvent e 
-        WHERE e.processed = false 
-        AND e.retryCount > 0 
-        AND e.retryCount < e.maxRetries
-        AND e.nextRetryAt <= :currentTime
-        ORDER BY e.nextRetryAt ASC
-    """)
-    fun findRetryableEvents(
-        @Param("currentTime") currentTime: LocalDateTime,
-        pageable: Pageable
-    ): List<OutboxEvent>
     
     /**
      * 특정 집합체의 모든 이벤트 조회
@@ -104,29 +75,6 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, UUID> {
         @Param("processedAt") processedAt: LocalDateTime
     )
     
-    /**
-     * 재시도 정보 업데이트
-     * 
-     * @param eventId 이벤트 ID
-     * @param retryCount 재시도 횟수
-     * @param nextRetryAt 다음 재시도 시각
-     * @param errorMessage 오류 메시지
-     */
-    @Modifying
-    @Transactional
-    @Query("""
-        UPDATE OutboxEvent e 
-        SET e.retryCount = :retryCount, 
-            e.nextRetryAt = :nextRetryAt, 
-            e.errorMessage = :errorMessage
-        WHERE e.eventId = :eventId
-    """)
-    fun updateRetryInfo(
-        @Param("eventId") eventId: UUID,
-        @Param("retryCount") retryCount: Int,
-        @Param("nextRetryAt") nextRetryAt: LocalDateTime,
-        @Param("errorMessage") errorMessage: String
-    )
     
     /**
      * 오래된 처리 완료 이벤트 삭제 (정리 작업용)
@@ -144,7 +92,7 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, UUID> {
     fun deleteProcessedEventsBefore(@Param("cutoffDate") cutoffDate: LocalDateTime): Int
     
     /**
-     * 실패한 이벤트 삭제 (최대 재시도 횟수 초과)
+     * 오래된 미처리 이벤트 삭제 (CDC 문제로 발행되지 않은 이벤트)
      * 
      * @param cutoffDate 삭제 기준 날짜
      * @return 삭제된 이벤트 수
@@ -153,10 +101,10 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, UUID> {
     @Transactional
     @Query("""
         DELETE FROM OutboxEvent e 
-        WHERE e.retryCount >= e.maxRetries 
+        WHERE e.processed = false 
         AND e.createdAt < :cutoffDate
     """)
-    fun deleteFailedEventsBefore(@Param("cutoffDate") cutoffDate: LocalDateTime): Int
+    fun deleteStaleUnprocessedEventsBefore(@Param("cutoffDate") cutoffDate: LocalDateTime): Int
     
     /**
      * 통계용: 미처리 이벤트 개수 조회
@@ -165,8 +113,14 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, UUID> {
     fun countUnprocessedEvents(): Long
     
     /**
-     * 통계용: 재시도 중인 이벤트 개수 조회
+     * 통계용: 처리 완료된 이벤트 개수 조회  
      */
-    @Query("SELECT COUNT(e) FROM OutboxEvent e WHERE e.retryCount > 0 AND e.processed = false")
-    fun countRetryingEvents(): Long
+    @Query("SELECT COUNT(e) FROM OutboxEvent e WHERE e.processed = true")
+    fun countProcessedEvents(): Long
+    
+    /**
+     * 통계용: 특정 시간 이후 생성된 이벤트 개수
+     */
+    @Query("SELECT COUNT(e) FROM OutboxEvent e WHERE e.createdAt >= :since")
+    fun countEventsCreatedSince(@Param("since") since: LocalDateTime): Long
 }

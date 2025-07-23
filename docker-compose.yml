@@ -9,6 +9,8 @@ services:
       POSTGRES_DB: algoreport
       POSTGRES_USER: algoreport
       POSTGRES_PASSWORD: algoreport123
+      # CDC를 위한 WAL 설정
+      POSTGRES_INITDB_ARGS: "-c wal_level=logical -c max_replication_slots=10 -c max_wal_senders=10"
     ports:
       - "5432:5432"
     volumes:
@@ -16,6 +18,14 @@ services:
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - algoreport-network
+    command: 
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c" 
+      - "max_replication_slots=10"
+      - "-c"
+      - "max_wal_senders=10"
 
   # Redis Cache
   redis:
@@ -88,17 +98,45 @@ services:
     networks:
       - algoreport-network
 
+  # Kafka Connect with Debezium
+  kafka-connect:
+    image: debezium/connect:2.4
+    container_name: algoreport-kafka-connect
+    depends_on:
+      - kafka
+      - postgres
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: debezium_configs
+      OFFSET_STORAGE_TOPIC: debezium_offsets
+      STATUS_STORAGE_TOPIC: debezium_statuses
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      # Outbox Event Router 플러그인 활성화
+      CONNECT_PLUGIN_PATH: /kafka/connect
+    volumes:
+      - ./scripts/debezium-connectors:/kafka/connect
+    networks:
+      - algoreport-network
+
   # Kafka UI (optional - for development)
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: algoreport-kafka-ui
     depends_on:
       - kafka
+      - kafka-connect
     ports:
       - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: algoreport-kafka
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: algoreport-connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
     networks:
       - algoreport-network
 

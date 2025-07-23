@@ -5,21 +5,27 @@ import java.time.LocalDateTime
 import java.util.*
 
 /**
- * Outbox Pattern을 구현하기 위한 이벤트 엔티티
+ * CDC 기반 Outbox Pattern을 구현하기 위한 이벤트 엔티티
  * 
  * SAGA 패턴에서 도메인 이벤트를 안전하게 발행하기 위해 사용됩니다.
  * 비즈니스 트랜잭션과 동일한 트랜잭션 내에서 이벤트를 저장하고,
- * 별도의 프로세스에서 이벤트를 Kafka로 발행합니다.
+ * Debezium CDC가 PostgreSQL WAL을 감지하여 자동으로 Kafka에 발행합니다.
+ * 
+ * ⚡ CDC 최적화:
+ * - INSERT 시점에 즉시 Kafka 발행 (폴링 없음)
+ * - processed 필드로 발행 상태 추적
+ * - DELETE로 정리 작업 수행 (UPDATE 대신)
  */
 @Entity
 @Table(
     name = "OUTBOX_EVENTS",
     indexes = [
         Index(name = "idx_outbox_processed", columnList = "processed"),
-        Index(name = "idx_outbox_retry", columnList = "retryCount, nextRetryAt"),
         Index(name = "idx_outbox_aggregate", columnList = "aggregateType, aggregateId"),
         Index(name = "idx_outbox_saga", columnList = "sagaId"),
-        Index(name = "idx_outbox_created", columnList = "createdAt")
+        Index(name = "idx_outbox_created", columnList = "createdAt"),
+        // CDC 최적화: WAL 기반이므로 재시도 인덱스는 제거 가능
+        Index(name = "idx_outbox_cleanup", columnList = "processedAt") // 정리 작업용
     ]
 )
 data class OutboxEvent(
@@ -77,34 +83,10 @@ data class OutboxEvent(
     var processed: Boolean = false,
     
     /**
-     * 처리 완료 시각
+     * 처리 완료 시각 (CDC에서 Kafka 발행 완료 후 설정)
      */
     @Column(name = "processed_at")
     var processedAt: LocalDateTime? = null,
-    
-    /**
-     * 재시도 횟수
-     */
-    @Column(name = "retry_count", nullable = false)
-    var retryCount: Int = 0,
-    
-    /**
-     * 최대 재시도 횟수
-     */
-    @Column(name = "max_retries", nullable = false)
-    val maxRetries: Int = 3,
-    
-    /**
-     * 다음 재시도 시각
-     */
-    @Column(name = "next_retry_at")
-    var nextRetryAt: LocalDateTime? = null,
-    
-    /**
-     * 오류 메시지
-     */
-    @Column(name = "error_message", columnDefinition = "TEXT")
-    var errorMessage: String? = null,
     
     /**
      * 이벤트 스키마 버전
@@ -114,23 +96,24 @@ data class OutboxEvent(
 ) {
     
     /**
-     * 재시도 가능 여부 확인
+     * 처리 완료로 마킹 (CDC에서 Kafka 발행 성공 후 호출)
      */
-    fun isRetryable(): Boolean {
-        return !processed && retryCount < maxRetries
+    fun markAsProcessed() {
+        this.processed = true
+        this.processedAt = LocalDateTime.now()
     }
     
     /**
-     * 재시도 시간이 되었는지 확인
+     * 처리 완료 여부 확인
      */
-    fun isRetryTimeReached(now: LocalDateTime): Boolean {
-        return nextRetryAt?.let { it.isBefore(now) || it.isEqual(now) } ?: true
+    fun isProcessed(): Boolean {
+        return processed
     }
     
     /**
-     * 최대 재시도 횟수에 도달했는지 확인
+     * 이벤트 생성 후 경과 시간 (분 단위)
      */
-    fun hasReachedMaxRetries(): Boolean {
-        return retryCount >= maxRetries
+    fun getAgeInMinutes(): Long {
+        return java.time.Duration.between(createdAt, LocalDateTime.now()).toMinutes()
     }
 }
