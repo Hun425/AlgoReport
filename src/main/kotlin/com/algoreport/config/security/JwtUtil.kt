@@ -33,17 +33,17 @@ class JwtUtil(
         val now = Date()
         val expiryDate = Date(now.time + expirationMs)
         
-        val claimsBuilder = Jwts.claims().setSubject(userId.toString())
+        val builder = Jwts.builder()
+            .subject(userId.toString())
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(key)
+        
         additionalClaims.forEach { (key, value) ->
-            claimsBuilder[key] = value
+            builder.claim(key, value)
         }
         
-        return Jwts.builder()
-            .setClaims(claimsBuilder)
-            .setIssuedAt(now)
-            .setExpiration(expiryDate)
-            .signWith(key, SignatureAlgorithm.HS256)
-            .compact()
+        return builder.compact()
     }
     
     /**
@@ -53,12 +53,12 @@ class JwtUtil(
         return try {
             if (token.isNullOrBlank()) return false
             
-            val claims = Jwts.parserBuilder()
-                .setSigningKey(key)
+            val claims = Jwts.parser()
+                .verifyWith(key as javax.crypto.SecretKey)
                 .build()
-                .parseClaimsJws(token)
+                .parseSignedClaims(token)
             
-            !isTokenExpired(claims.body)
+            !isTokenExpired(claims.payload)
         } catch (e: Exception) {
             false
         }
@@ -92,11 +92,11 @@ class JwtUtil(
      * JWT 토큰에서 Claims 추출
      */
     private fun getClaimsFromToken(token: String): Claims {
-        return Jwts.parserBuilder()
-            .setSigningKey(key)
+        return Jwts.parser()
+            .verifyWith(key as javax.crypto.SecretKey)
             .build()
-            .parseClaimsJws(token)
-            .body
+            .parseSignedClaims(token)
+            .payload
     }
     
     /**

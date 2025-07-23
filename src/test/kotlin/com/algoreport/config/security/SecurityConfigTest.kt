@@ -51,7 +51,7 @@ class SecurityConfigTest : BehaviorSpec({
                     .andExpect(status().isUnauthorized)
                 
                 mockMvc.perform(post("/api/v1/studygroups"))
-                    .andExpected(status().isUnauthorized)
+                    .andExpect(status().isUnauthorized)
             }
         }
         

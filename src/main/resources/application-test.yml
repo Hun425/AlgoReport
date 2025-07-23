@@ -17,6 +17,18 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: openid,profile,email
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
 
 logging:
   level:

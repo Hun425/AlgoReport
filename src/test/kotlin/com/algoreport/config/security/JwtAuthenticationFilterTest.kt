@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.core.context.SecurityContextHolder
@@ -26,9 +27,10 @@ class JwtAuthenticationFilterTest : BehaviorSpec({
         
         `when`("Authorization 헤더가 없으면") {
             then("인증 없이 다음 필터로 진행해야 한다") {
-                filter.doFilterInternal(request, response, filterChain)
+                filter.doFilter(request, response, filterChain)
                 
                 SecurityContextHolder.getContext().authentication shouldBe null
+                verify { filterChain.doFilter(request, response) }
             }
         }
         
@@ -36,9 +38,10 @@ class JwtAuthenticationFilterTest : BehaviorSpec({
             request.addHeader("Authorization", "Basic dGVzdDp0ZXN0")
             
             then("인증 없이 다음 필터로 진행해야 한다") {
-                filter.doFilterInternal(request, response, filterChain)
+                filter.doFilter(request, response, filterChain)
                 
                 SecurityContextHolder.getContext().authentication shouldBe null
+                verify { filterChain.doFilter(request, response) }
             }
         }
         
@@ -51,12 +54,13 @@ class JwtAuthenticationFilterTest : BehaviorSpec({
             every { jwtUtil.getUserIdFromToken(validToken) } returns userId
             
             then("인증 정보가 SecurityContext에 설정되어야 한다") {
-                filter.doFilterInternal(request, response, filterChain)
+                filter.doFilter(request, response, filterChain)
                 
                 val authentication = SecurityContextHolder.getContext().authentication
                 authentication shouldNotBe null
                 authentication.principal shouldBe userId
                 authentication.isAuthenticated shouldBe true
+                verify { filterChain.doFilter(request, response) }
             }
         }
         
@@ -67,9 +71,10 @@ class JwtAuthenticationFilterTest : BehaviorSpec({
             every { jwtUtil.validateToken(invalidToken) } returns false
             
             then("인증 정보가 설정되지 않아야 한다") {
-                filter.doFilterInternal(request, response, filterChain)
+                filter.doFilter(request, response, filterChain)
                 
                 SecurityContextHolder.getContext().authentication shouldBe null
+                verify { filterChain.doFilter(request, response) }
             }
         }
     }
