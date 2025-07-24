@@ -36,6 +36,11 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     SOLVEDAC_API_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50002", "solved.ac API 호출 중 오류가 발생했습니다."),
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50003", "데이터베이스 처리 중 오류가 발생했습니다."),
     
+    // 429 TOO_MANY_REQUESTS
+    SOLVEDAC_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "E42901", "solved.ac API 호출 제한에 도달했습니다. 잠시 후 다시 시도해주세요."),
+    API_CONCURRENT_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "E42902", "동시 API 호출 제한에 도달했습니다."),
+    DAILY_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "E42903", "일일 API 할당량을 초과했습니다."),
+    
     // 503 SERVICE_UNAVAILABLE
     SOLVEDAC_API_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E50301", "solved.ac API 서비스를 일시적으로 사용할 수 없습니다."),
 }
