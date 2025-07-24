@@ -192,6 +192,98 @@ class DataSyncBatchServiceTest : BehaviorSpec({
                 result.retryAttempts shouldBe 0
             }
         }
+        
+        `when`("체크포인트로부터 배치 수집을 재시작할 때") {
+            val syncJobId = UUID.randomUUID()
+            val userId = UUID.randomUUID()
+            
+            // 체크포인트 Mock 설정
+            val checkpoint = DataSyncCheckpoint(
+                syncJobId = syncJobId,
+                userId = userId,
+                currentBatch = 3,
+                totalBatches = 5,
+                lastProcessedSubmissionId = 12345L,
+                collectedCount = 200,
+                failedAttempts = 1,
+                checkpointAt = LocalDateTime.now(),
+                canResume = true
+            )
+            
+            every { checkpointRepository.findBySyncJobId(syncJobId) } returns checkpoint
+            
+            then("체크포인트부터 재시작되어야 한다") {
+                val resumeSuccess = dataSyncBatchService.resumeFromCheckpoint(syncJobId)
+                
+                resumeSuccess shouldBe true
+            }
+        }
+        
+        `when`("실패한 동기화 작업을 복구할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+            
+            // 70% 완료된 체크포인트 Mock 설정
+            val checkpoint = DataSyncCheckpoint(
+                syncJobId = UUID.randomUUID(),
+                userId = userId,
+                currentBatch = 7, // 70% 완료 (7/10)
+                totalBatches = 10,
+                lastProcessedSubmissionId = 67890L,
+                collectedCount = 700,
+                failedAttempts = 1,
+                checkpointAt = LocalDateTime.now(),
+                canResume = true
+            )
+            
+            every { checkpointRepository.findLatestByUserId(userId) } returns checkpoint
+            
+            then("70% 이상 완료된 경우 체크포인트부터 복구되어야 한다") {
+                val recoveryResult = dataSyncBatchService.recoverFailedSync(
+                    userId = userId,
+                    handle = handle,
+                    maxRetryAttempts = 3
+                )
+                
+                recoveryResult shouldNotBe null
+                recoveryResult.userId shouldBe userId
+                recoveryResult.resumedFromBatch shouldBe 7
+                recoveryResult.recoverySuccessful shouldBe true
+            }
+        }
+        
+        `when`("30% 미만 완료된 동기화 작업을 복구할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+            
+            // 20% 완료된 체크포인트 Mock 설정
+            val checkpoint = DataSyncCheckpoint(
+                syncJobId = UUID.randomUUID(),
+                userId = userId,
+                currentBatch = 2, // 20% 완료 (2/10)
+                totalBatches = 10,
+                lastProcessedSubmissionId = 12345L,
+                collectedCount = 200,
+                failedAttempts = 1,
+                checkpointAt = LocalDateTime.now(),
+                canResume = true
+            )
+            
+            every { checkpointRepository.findLatestByUserId(userId) } returns checkpoint
+            
+            then("처음부터 새로 시작되어야 한다") {
+                val recoveryResult = dataSyncBatchService.recoverFailedSync(
+                    userId = userId,
+                    handle = handle,
+                    maxRetryAttempts = 3
+                )
+                
+                recoveryResult shouldNotBe null
+                recoveryResult.userId shouldBe userId
+                recoveryResult.resumedFromBatch shouldBe 1 // 처음부터 시작
+                recoveryResult.recoverySuccessful shouldBe true
+            }
+        }
     }
 })
 
