@@ -1,5 +1,6 @@
 package com.algoreport.collector
 
+import com.algoreport.collector.dto.SubmissionList
 import com.algoreport.config.exception.CustomException
 import com.algoreport.config.exception.Error
 import io.kotest.core.spec.style.BehaviorSpec
@@ -54,7 +55,7 @@ class RateLimitHandlerTest : BehaviorSpec({
             )
             
             then("재시도 간격이 지수적으로 증가해야 한다") {
-                val delayCalculator = ExponentialBackoffCalculator(retryConfig)
+                val delayCalculator = ExponentialBackoffCalculatorImpl(retryConfig)
                 
                 val firstDelay = delayCalculator.calculateDelay(1)
                 val secondDelay = delayCalculator.calculateDelay(2)
@@ -79,7 +80,7 @@ class RateLimitHandlerTest : BehaviorSpec({
             )
             
             then("최대 대기 시간으로 제한되어야 한다") {
-                val delayCalculator = ExponentialBackoffCalculator(retryConfig)
+                val delayCalculator = ExponentialBackoffCalculatorImpl(retryConfig)
                 
                 val highAttemptDelay = delayCalculator.calculateDelay(5) // 30 * 2^4 = 480초 → 60초로 제한
                 
@@ -97,7 +98,7 @@ class RateLimitHandlerTest : BehaviorSpec({
                 attemptCount++
                 when (attemptCount) {
                     1, 2 -> throw CustomException(Error.SOLVEDAC_RATE_LIMIT_EXCEEDED)
-                    else -> mockk() // 성공 응답
+                    else -> SubmissionList(count = 100, items = emptyList()) // 성공 응답
                 }
             }
             
@@ -182,7 +183,7 @@ class RateLimitHandlerTest : BehaviorSpec({
             val batchSize = 100
             
             then("레이트 리밋 발생 시 자동으로 재시도되어야 한다") {
-                val rateLimitAwareBatchService = RateLimitAwareBatchService(
+                val rateLimitAwareBatchService = RateLimitAwareBatchServiceImpl(
                     solvedacApiClient = solvedacApiClient,
                     rateLimitHandler = rateLimitHandler
                 )
@@ -193,7 +194,7 @@ class RateLimitHandlerTest : BehaviorSpec({
                     if (callCount <= 2) {
                         throw CustomException(Error.SOLVEDAC_RATE_LIMIT_EXCEEDED)
                     } else {
-                        mockk() // 성공 응답
+                        SubmissionList(count = 100, items = emptyList()) // 성공 응답
                     }
                 }
                 
