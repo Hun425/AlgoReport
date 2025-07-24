@@ -24,12 +24,13 @@ class OutboxServiceTest : BehaviorSpec({
         `when`("기본 이벤트 정보로 발행하면") {
             val eventId = UUID.randomUUID()
             val mockEvent = OutboxEvent(
-                eventId = eventId,
                 aggregateType = "USER",
                 aggregateId = "user-123",
                 eventType = "USER_REGISTERED",
                 eventData = """{"userId": "user-123", "email": "test@example.com"}"""
-            )
+            ).apply {
+                this.eventId = eventId
+            }
             
             every { outboxEventRepository.save(any<OutboxEvent>()) } returns mockEvent
             
@@ -53,8 +54,7 @@ class OutboxServiceTest : BehaviorSpec({
                             event.aggregateId == "user-123" &&
                             event.eventType == "USER_REGISTERED" &&
                             event.eventData.contains("user-123") &&
-                            event.processed == false &&
-                            event.retryCount == 0
+                            event.processed == false
                         }
                     )
                 }
@@ -65,14 +65,15 @@ class OutboxServiceTest : BehaviorSpec({
             val sagaId = UUID.randomUUID()
             val eventId = UUID.randomUUID()
             val mockEvent = OutboxEvent(
-                eventId = eventId,
                 aggregateType = "STUDY_GROUP",
                 aggregateId = "group-456",
                 eventType = "GROUP_CREATED",
                 eventData = """{"groupId": "group-456", "ownerId": "user-123"}""",
                 sagaId = sagaId,
                 sagaType = "CREATE_GROUP_SAGA"
-            )
+            ).apply {
+                this.eventId = eventId
+            }
             
             every { outboxEventRepository.save(any<OutboxEvent>()) } returns mockEvent
             

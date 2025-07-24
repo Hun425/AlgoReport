@@ -78,7 +78,8 @@ interface DataSyncBatchService {
     ): DataSyncCheckpoint
     
     /**
-     * Virtual Thread를 이용한 병렬 배치 처리
+     * Kotlin Coroutines를 이용한 병렬 배치 처리
+     * Virtual Thread보다 메모리 효율적이고 수천만 개의 동시 처리 가능
      * 
      * @param syncJobId 동기화 작업 ID
      * @param handle solved.ac 핸들
@@ -86,7 +87,7 @@ interface DataSyncBatchService {
      * @param batchSize 배치 크기
      * @return 모든 배치 수집 결과
      */
-    fun collectBatchesInParallel(
+    suspend fun collectBatchesInParallel(
         syncJobId: UUID,
         handle: String,
         totalBatches: Int,

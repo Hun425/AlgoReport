@@ -30,7 +30,8 @@ class OutboxEventTest(
                 aggregateType = "USER",
                 aggregateId = "user-123", 
                 eventType = "USER_REGISTERED",
-                eventData = eventData
+                eventData = eventData,
+                createdAt = LocalDateTime.now()
             )
             
             then("기본값이 올바르게 설정되어야 한다") {
@@ -42,11 +43,8 @@ class OutboxEventTest(
                 outboxEvent.sagaId shouldBe null
                 outboxEvent.sagaType shouldBe null
                 outboxEvent.processed shouldBe false
-                outboxEvent.retryCount shouldBe 0
-                outboxEvent.maxRetries shouldBe 3
+                // CDC 모델에서는 재시도 관련 필드들이 제거됨
                 outboxEvent.processedAt shouldBe null
-                outboxEvent.nextRetryAt shouldBe null
-                outboxEvent.errorMessage shouldBe null
                 outboxEvent.version shouldBe 1
                 outboxEvent.createdAt shouldNotBe null
             }
@@ -93,7 +91,7 @@ class OutboxEventTest(
                 foundEvent.aggregateId shouldBe "user-789"
                 foundEvent.eventType shouldBe "USER_UPDATED"
                 foundEvent.processed shouldBe false
-                foundEvent.retryCount shouldBe 0
+                // CDC 모델에서는 retryCount 필드가 제거됨
             }
         }
         

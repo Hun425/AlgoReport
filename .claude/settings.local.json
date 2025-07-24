@@ -14,7 +14,14 @@
       "Bash(powershell:*)",
       "Bash(dir)",
       "Bash(gradlew.bat test:*)",
-      "Bash(cmd:*)"
+      "Bash(cmd:*)",
+      "Bash(gradlew.bat build:*)",
+      "Bash(bash:*)",
+      "Bash(gradle build)",
+      "Bash(gradle test)",
+      "Bash(.\\gradlew.bat test:*)",
+      "Bash(gradlew test:*)",
+      "Bash(gradle:*)"
     ],
     "deny": []
   }
