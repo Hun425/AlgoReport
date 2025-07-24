@@ -43,6 +43,11 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     
+    // Kotlin Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.8.0")
+    
     // Database
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("com.h2database:h2")

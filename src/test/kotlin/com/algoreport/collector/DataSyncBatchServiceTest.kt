@@ -33,12 +33,12 @@ class DataSyncBatchServiceTest : BehaviorSpec({
             items = (1..100).map { 
                 Submission(
                     submissionId = it.toLong(),
-                    problemId = 1000 + it,
-                    userId = "testuser",
+                    problem = mockk(),
+                    user = mockk(),
+                    timestamp = LocalDateTime.now(),
                     result = "맞았습니다!!",
                     language = "Kotlin",
-                    codeLength = 500,
-                    submissionTime = "2025-07-23T10:00:00Z"
+                    codeLength = 500
                 )
             }
         )
@@ -237,6 +237,8 @@ class DataSyncBatchServiceTest : BehaviorSpec({
             )
             
             every { checkpointRepository.findLatestByUserId(userId) } returns checkpoint
+            every { checkpointRepository.findBySyncJobId(checkpoint.syncJobId) } returns checkpoint
+            every { checkpointRepository.save(any()) } returnsArgument 0
             
             then("70% 이상 완료된 경우 체크포인트부터 복구되어야 한다") {
                 val recoveryResult = dataSyncBatchService.recoverFailedSync(

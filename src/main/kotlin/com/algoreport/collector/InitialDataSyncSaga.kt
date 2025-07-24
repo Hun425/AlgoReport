@@ -1,12 +1,11 @@
 package com.algoreport.collector
 
 import com.algoreport.config.outbox.OutboxService
+import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 
 /**
  * INITIAL_DATA_SYNC_SAGA 오케스트레이터
@@ -32,8 +31,9 @@ class InitialDataSyncSaga(
     
     /**
      * SAGA 시작 - 사용자의 solved.ac 계정 연동 시 트리거
+     * Kotlin Coroutines를 사용하여 비동기 처리
      */
-    fun startSaga(
+    suspend fun startSaga(
         userId: UUID,
         handle: String,
         syncPeriodMonths: Int = DEFAULT_SYNC_PERIOD_MONTHS
@@ -123,54 +123,50 @@ class InitialDataSyncSaga(
     }
     
     /**
-     * Virtual Thread를 활용한 병렬 배치 수집
+     * Kotlin Coroutines를 활용한 병렬 배치 수집
+     * Virtual Thread보다 메모리 효율적이고 높은 동시성 처리 가능
      */
-    private fun executeParallelBatchCollection(
+    private suspend fun executeParallelBatchCollection(
         sagaId: UUID,
         handle: String,
         totalBatches: Int
-    ): List<RateLimitAwareBatchResult> {
+    ): List<RateLimitAwareBatchResult> = coroutineScope {
         logger.info("Starting parallel batch collection - sagaId: {}, totalBatches: {}", sagaId, totalBatches)
         
-        // Virtual Thread Executor 사용
-        return Executors.newVirtualThreadPerTaskExecutor().use { executor ->
-            val futures = (1..totalBatches).map { batchNumber ->
-                CompletableFuture.supplyAsync({
-                    try {
-                        logger.debug("Processing batch {}/{} - sagaId: {}", batchNumber, totalBatches, sagaId)
-                        
-                        rateLimitAwareBatchService.collectBatchWithRateLimit(
-                            syncJobId = sagaId,
-                            handle = handle,
-                            batchNumber = batchNumber,
-                            batchSize = DEFAULT_BATCH_SIZE
-                        )
-                    } catch (e: Exception) {
-                        logger.error("Batch {} failed - sagaId: {}", batchNumber, sagaId, e)
-                        
-                        // 실패한 배치 결과 생성
-                        RateLimitAwareBatchResult(
-                            syncJobId = sagaId,
-                            batchNumber = batchNumber,
-                            successful = false,
-                            collectedCount = 0,
-                            retryAttempts = 1,
-                            rateLimitHandled = false,
-                            totalRetryTimeMs = 0L,
-                            errorMessage = e.message ?: "Unknown error"
-                        )
-                    }
-                }, executor)
+        // Kotlin Coroutines를 사용한 병렬 처리 - 수천만 개 동시 처리 가능
+        val results = (1..totalBatches).map { batchNumber ->
+            async {
+                try {
+                    logger.debug("Processing batch {}/{} - sagaId: {}", batchNumber, totalBatches, sagaId)
+                    
+                    rateLimitAwareBatchService.collectBatchWithRateLimit(
+                        syncJobId = sagaId,
+                        handle = handle,
+                        batchNumber = batchNumber,
+                        batchSize = DEFAULT_BATCH_SIZE
+                    )
+                } catch (e: Exception) {
+                    logger.error("Batch {} failed - sagaId: {}", batchNumber, sagaId, e)
+                    
+                    // 실패한 배치 결과 생성
+                    RateLimitAwareBatchResult(
+                        syncJobId = sagaId,
+                        batchNumber = batchNumber,
+                        successful = false,
+                        collectedCount = 0,
+                        retryAttempts = 1,
+                        rateLimitHandled = false,
+                        totalRetryTimeMs = 0L,
+                        errorMessage = e.message ?: "Unknown error"
+                    )
+                }
             }
-            
-            // 모든 배치 완료 대기
-            val results = futures.map { it.get() }
-            
-            logger.info("Parallel batch collection completed - sagaId: {}, successful: {}, failed: {}", 
-                       sagaId, results.count { it.successful }, results.count { !it.successful })
-            
-            results
-        }
+        }.awaitAll()
+        
+        logger.info("Parallel batch collection completed - sagaId: {}, successful: {}, failed: {}", 
+                   sagaId, results.count { it.successful }, results.count { !it.successful })
+        
+        results
     }
     
     /**
