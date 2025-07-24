@@ -58,8 +58,8 @@ class SolvedacApiClientTest : BehaviorSpec({
             val batchSize = 100
             
             then("배치 계획이 올바르게 생성되어야 한다") {
-                // RED 단계: 아직 구현되지 않은 기능에 대한 테스트
-                val dataSyncService = DataSyncBatchService(solvedacApiClient, mockk())
+                // GREEN 단계: 구현체로 테스트 통과 확인
+                val dataSyncService = DataSyncBatchServiceImpl(solvedacApiClient, mockk())
                 
                 val batchPlan = dataSyncService.createBatchPlan(
                     userId = java.util.UUID.randomUUID(),
@@ -68,7 +68,7 @@ class SolvedacApiClientTest : BehaviorSpec({
                     batchSize = batchSize
                 )
                 
-                // 이 테스트는 실패해야 함 (구현체가 없으므로)
+                // 이제 테스트가 통과해야 함
                 batchPlan shouldNotBe null
                 batchPlan.batchSize shouldBe batchSize
                 batchPlan.totalBatches shouldBeGreaterThan 0
