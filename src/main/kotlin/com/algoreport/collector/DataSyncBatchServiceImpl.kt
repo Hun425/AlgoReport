@@ -21,6 +21,12 @@ class DataSyncBatchServiceImpl(
     
     private val logger = LoggerFactory.getLogger(DataSyncBatchServiceImpl::class.java)
     
+    companion object {
+        private const val RECOVERY_THRESHOLD_PERCENTAGE = 70.0
+        private const val MAX_RETRY_ATTEMPTS = 3
+        private const val DEFAULT_SUBMISSIONS_PER_MONTH = 75
+    }
+    
     override fun createBatchPlan(
         userId: UUID,
         handle: String,
@@ -30,7 +36,7 @@ class DataSyncBatchServiceImpl(
         logger.info("Creating batch plan for user: {}, handle: {}", userId, handle)
         
         // 간단한 추정: 6개월간 약 450개 제출 예상
-        val estimatedSubmissions = syncPeriodMonths * 75 // 월 평균 75개
+        val estimatedSubmissions = syncPeriodMonths * DEFAULT_SUBMISSIONS_PER_MONTH
         val totalBatches = (estimatedSubmissions + batchSize - 1) / batchSize // 올림 계산
         
         return BatchPlan(
@@ -82,11 +88,7 @@ class DataSyncBatchServiceImpl(
         currentBatch: Int,
         totalBatches: Int
     ): ProgressTracker {
-        val progressPercentage = if (totalBatches > 0) {
-            (currentBatch.toDouble() / totalBatches.toDouble()) * 100.0
-        } else {
-            0.0
-        }
+        val progressPercentage = calculateCompletionPercentage(currentBatch, totalBatches)
         
         return ProgressTracker(
             syncJobId = syncJobId,
@@ -183,5 +185,174 @@ class DataSyncBatchServiceImpl(
             // 정상적인 배치 수집
             collectBatch(syncJobId, handle, batchNumber, batchSize)
         }
+    }
+    
+    override fun resumeFromCheckpoint(syncJobId: UUID): Boolean {
+        logger.info("Attempting to resume sync job from checkpoint: {}", syncJobId)
+        
+        val checkpoint = checkpointRepository.findBySyncJobId(syncJobId)
+        if (checkpoint == null) {
+            logger.warn("No checkpoint found for sync job: {}", syncJobId)
+            return false
+        }
+        
+        if (!isCheckpointResumable(checkpoint)) {
+            logger.warn("Sync job {} cannot be resumed (failed attempts: {})", 
+                       syncJobId, checkpoint.failedAttempts)
+            return false
+        }
+        
+        logger.info("Resuming sync job {} from batch {}/{}", 
+                   syncJobId, checkpoint.currentBatch, checkpoint.totalBatches)
+        
+        try {
+            // 체크포인트부터 남은 배치들을 순차적으로 처리
+            val remainingBatches = checkpoint.totalBatches - checkpoint.currentBatch + 1
+            var successfulBatches = 0
+            
+            for (batchNumber in checkpoint.currentBatch..checkpoint.totalBatches) {
+                val result = collectBatch(syncJobId, "recovered", batchNumber, 100)
+                
+                if (result.successful) {
+                    successfulBatches++
+                    
+                    // 중간 체크포인트 업데이트
+                    val updatedCheckpoint = checkpoint.copy(
+                        currentBatch = batchNumber,
+                        collectedCount = checkpoint.collectedCount + result.collectedCount,
+                        checkpointAt = LocalDateTime.now()
+                    )
+                    checkpointRepository.save(updatedCheckpoint)
+                } else {
+                    logger.error("Failed to resume batch {} for sync job {}", batchNumber, syncJobId)
+                    
+                    // 실패 시 재시도 횟수 증가
+                    val failedCheckpoint = checkpoint.copy(
+                        failedAttempts = checkpoint.failedAttempts + 1,
+                        canResume = checkpoint.failedAttempts < 2, // 3회 초과 시 복구 불가
+                        checkpointAt = LocalDateTime.now()
+                    )
+                    checkpointRepository.save(failedCheckpoint)
+                    return false
+                }
+            }
+            
+            logger.info("Successfully resumed sync job {}: {}/{} batches completed", 
+                       syncJobId, successfulBatches, remainingBatches)
+            return true
+            
+        } catch (e: Exception) {
+            logger.error("Exception occurred while resuming sync job {}", syncJobId, e)
+            return false
+        }
+    }
+    
+    override fun recoverFailedSync(
+        userId: UUID,
+        handle: String,
+        maxRetryAttempts: Int
+    ): SyncRecoveryResult {
+        logger.info("Attempting to recover failed sync for user: {}, handle: {}", userId, handle)
+        val startTime = System.currentTimeMillis()
+        
+        // 사용자의 최신 체크포인트 조회
+        val latestCheckpoint = checkpointRepository.findLatestByUserId(userId)
+        
+        if (latestCheckpoint == null) {
+            logger.warn("No checkpoint found for user: {}", userId)
+            return SyncRecoveryResult(
+                syncJobId = UUID.randomUUID(),
+                userId = userId,
+                recoverySuccessful = false,
+                resumedFromBatch = 0,
+                totalBatchesCompleted = 0,
+                failureReason = "No checkpoint found for recovery"
+            )
+        }
+        
+        if (latestCheckpoint.failedAttempts >= maxRetryAttempts) {
+            logger.error("User {} has exceeded maximum retry attempts: {}", 
+                        userId, latestCheckpoint.failedAttempts)
+            return SyncRecoveryResult(
+                syncJobId = latestCheckpoint.syncJobId,
+                userId = userId,
+                recoverySuccessful = false,
+                resumedFromBatch = latestCheckpoint.currentBatch,
+                totalBatchesCompleted = 0,
+                failureReason = "Maximum retry attempts exceeded"
+            )
+        }
+        
+        // 부분 완료된 경우 (70% 이상) 체크포인트부터 재시작
+        val completionPercentage = calculateCompletionPercentage(
+            latestCheckpoint.currentBatch, 
+            latestCheckpoint.totalBatches
+        )
+        
+        return if (completionPercentage >= RECOVERY_THRESHOLD_PERCENTAGE) {
+            logger.info("Attempting recovery from checkpoint ({}% completed)", completionPercentage)
+            
+            val resumeSuccess = resumeFromCheckpoint(latestCheckpoint.syncJobId)
+            val durationMinutes = calculateDurationMinutes(startTime)
+            
+            SyncRecoveryResult(
+                syncJobId = latestCheckpoint.syncJobId,
+                userId = userId,
+                recoverySuccessful = resumeSuccess,
+                resumedFromBatch = latestCheckpoint.currentBatch,
+                totalBatchesCompleted = if (resumeSuccess) latestCheckpoint.totalBatches else latestCheckpoint.currentBatch,
+                failureReason = if (!resumeSuccess) "Resume from checkpoint failed" else null,
+                recoveryDurationMinutes = durationMinutes
+            )
+        } else {
+            logger.info("Starting fresh sync ({}% completed is below {}% threshold)", 
+                       completionPercentage, RECOVERY_THRESHOLD_PERCENTAGE)
+            
+            // 30% 미만인 경우 처음부터 다시 시작
+            val freshSyncJobId = UUID.randomUUID()
+            val batchPlan = createBatchPlan(userId, handle, 6, 100)
+            
+            val freshResults = collectBatchesInParallel(
+                freshSyncJobId, handle, batchPlan.totalBatches, batchPlan.batchSize
+            )
+            
+            val successfulBatches = freshResults.count { it.successful }
+            val durationMinutes = calculateDurationMinutes(startTime)
+            
+            SyncRecoveryResult(
+                syncJobId = freshSyncJobId,
+                userId = userId,
+                recoverySuccessful = successfulBatches == batchPlan.totalBatches,
+                resumedFromBatch = 1,
+                totalBatchesCompleted = successfulBatches,
+                failureReason = if (successfulBatches < batchPlan.totalBatches) "Fresh sync partially failed" else null,
+                recoveryDurationMinutes = durationMinutes
+            )
+        }
+    }
+    
+    /**
+     * 배치 완료율 계산 유틸리티 메서드
+     */
+    private fun calculateCompletionPercentage(currentBatch: Int, totalBatches: Int): Double {
+        return if (totalBatches > 0) {
+            (currentBatch.toDouble() / totalBatches.toDouble()) * 100.0
+        } else {
+            0.0
+        }
+    }
+    
+    /**
+     * 실행 시간 계산 유틸리티 메서드 (분 단위)
+     */
+    private fun calculateDurationMinutes(startTime: Long): Long {
+        return (System.currentTimeMillis() - startTime) / 60000
+    }
+    
+    /**
+     * 체크포인트 검증 유틸리티 메서드
+     */
+    private fun isCheckpointResumable(checkpoint: DataSyncCheckpoint): Boolean {
+        return checkpoint.canResume && checkpoint.failedAttempts < MAX_RETRY_ATTEMPTS
     }
 }

@@ -110,6 +110,28 @@ interface DataSyncBatchService {
         batchSize: Int,
         simulateError: Boolean = false
     ): BatchCollectionResult
+    
+    /**
+     * 체크포인트로부터 배치 수집 재시작
+     * 
+     * @param syncJobId 동기화 작업 ID
+     * @return 재시작 성공 여부
+     */
+    fun resumeFromCheckpoint(syncJobId: UUID): Boolean
+    
+    /**
+     * 실패한 동기화 작업 복구
+     * 
+     * @param userId 사용자 ID
+     * @param handle solved.ac 핸들
+     * @param maxRetryAttempts 최대 재시도 횟수
+     * @return 복구 결과
+     */
+    fun recoverFailedSync(
+        userId: UUID,
+        handle: String,
+        maxRetryAttempts: Int = 3
+    ): SyncRecoveryResult
 }
 
 /**

@@ -53,3 +53,47 @@ data class DataSyncCheckpoint(
     val checkpointAt: LocalDateTime,
     val canResume: Boolean
 )
+
+/**
+ * 동기화 복구 결과 데이터 클래스
+ */
+data class SyncRecoveryResult(
+    val syncJobId: UUID,
+    val userId: UUID,
+    val recoverySuccessful: Boolean,
+    val resumedFromBatch: Int,
+    val totalBatchesCompleted: Int,
+    val failureReason: String? = null,
+    val recoveredAt: LocalDateTime = LocalDateTime.now(),
+    val recoveryDurationMinutes: Long = 0
+)
+
+/**
+ * 동기화 작업 상태 열거형
+ */
+enum class SyncJobStatus {
+    CREATED,
+    IN_PROGRESS, 
+    COMPLETED,
+    FAILED,
+    PARTIALLY_COMPLETED,
+    RECOVERED
+}
+
+/**
+ * 동기화 작업 데이터 클래스
+ */
+data class DataSyncJob(
+    val syncJobId: UUID,
+    val userId: UUID,
+    val handle: String,
+    val status: SyncJobStatus,
+    val currentBatch: Int,
+    val totalBatches: Int,
+    val collectedCount: Int,
+    val failedAttempts: Int = 0,
+    val lastProcessedSubmissionId: Long = 0L,
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val completedAt: LocalDateTime? = null
+)
