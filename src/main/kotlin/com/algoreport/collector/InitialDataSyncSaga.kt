@@ -309,8 +309,9 @@ class InitialDataSyncSaga(
         )
         
         outboxService.publishEvent(
-            eventType = "DATA_SYNC_INITIATED",
+            aggregateType = "SYNC_JOB",
             aggregateId = "sync-job-$sagaId",
+            eventType = "DATA_SYNC_INITIATED",
             eventData = eventData
         )
     }
@@ -330,8 +331,9 @@ class InitialDataSyncSaga(
         )
         
         outboxService.publishEvent(
-            eventType = "HISTORICAL_DATA_COLLECTED",
+            aggregateType = "SYNC_JOB",
             aggregateId = "sync-job-$sagaId",
+            eventType = "HISTORICAL_DATA_COLLECTED",
             eventData = eventData
         )
     }
@@ -351,8 +353,9 @@ class InitialDataSyncSaga(
         )
         
         outboxService.publishEvent(
-            eventType = "DATA_SYNC_PARTIALLY_COMPLETED",
+            aggregateType = "SYNC_JOB",
             aggregateId = "sync-job-$sagaId",
+            eventType = "DATA_SYNC_PARTIALLY_COMPLETED",
             eventData = eventData
         )
     }
@@ -370,8 +373,9 @@ class InitialDataSyncSaga(
         )
         
         outboxService.publishEvent(
-            eventType = "DATA_SYNC_CLEANUP_INITIATED",
+            aggregateType = "SYNC_JOB",
             aggregateId = "sync-job-$sagaId",
+            eventType = "DATA_SYNC_CLEANUP_INITIATED",
             eventData = eventData
         )
     }
@@ -385,8 +389,9 @@ class InitialDataSyncSaga(
         )
         
         outboxService.publishEvent(
-            eventType = "COMPENSATION_TRANSACTION_FAILED",
+            aggregateType = "SYNC_JOB",
             aggregateId = "sync-job-$sagaId",
+            eventType = "COMPENSATION_TRANSACTION_FAILED",
             eventData = eventData
         )
     }
@@ -400,8 +405,9 @@ class InitialDataSyncSaga(
         )
         
         outboxService.publishEvent(
-            eventType = "EMERGENCY_CLEANUP_INITIATED",
+            aggregateType = "SYNC_JOB",
             aggregateId = "sync-job-$sagaId",
+            eventType = "EMERGENCY_CLEANUP_INITIATED",
             eventData = eventData
         )
     }
@@ -415,8 +421,9 @@ class InitialDataSyncSaga(
         )
         
         outboxService.publishEvent(
-            eventType = "INITIAL_DATA_SYNC_SAGA_FAILED",
+            aggregateType = "SYNC_JOB",
             aggregateId = "sync-job-$sagaId",
+            eventType = "INITIAL_DATA_SYNC_SAGA_FAILED",
             eventData = eventData
         )
     }

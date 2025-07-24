@@ -151,7 +151,7 @@ class OutboxService(
     @Transactional(readOnly = true)
     fun getEventStatistics(): EventStatistics {
         val unprocessedCount = outboxEventRepository.countUnprocessedEvents()
-        val retryingCount = outboxEventRepository.countRetryingEvents()
+        val retryingCount = 0L // CDC 방식에서는 재시도 없음
         val totalCount = outboxEventRepository.count()
         
         return EventStatistics(
