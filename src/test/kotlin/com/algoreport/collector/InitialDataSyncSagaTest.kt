@@ -1,0 +1,280 @@
+package com.algoreport.collector
+
+import com.algoreport.collector.dto.SubmissionList
+import com.algoreport.config.outbox.OutboxService
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.longs.shouldBeGreaterThan
+import io.kotest.matchers.longs.shouldBeLessThan
+import io.mockk.mockk
+import io.mockk.every
+import io.mockk.verify
+import java.util.*
+
+/**
+ * INITIAL_DATA_SYNC_SAGA 통합 테스트
+ * 
+ * TDD Refactor 단계: 전체 SAGA 시나리오 테스트
+ * Task 1-1-9: 전체 SAGA 최적화 검증
+ */
+class InitialDataSyncSagaTest : BehaviorSpec({
+    
+    given("InitialDataSyncSaga") {
+        val dataSyncBatchService = mockk<DataSyncBatchService>()
+        val rateLimitAwareBatchService = mockk<RateLimitAwareBatchService>()
+        val checkpointRepository = mockk<DataSyncCheckpointRepository>()
+        val outboxService = mockk<OutboxService>()
+        
+        val saga = InitialDataSyncSaga(
+            dataSyncBatchService = dataSyncBatchService,
+            rateLimitAwareBatchService = rateLimitAwareBatchService,
+            checkpointRepository = checkpointRepository,
+            outboxService = outboxService
+        )
+        
+        // 공통 Mock 설정
+        every { outboxService.publishEvent(any(), any(), any()) } returns Unit
+        every { checkpointRepository.save(any()) } returnsArgument 0
+        
+        `when`("완전 성공 시나리오를 실행할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+            
+            // 배치 계획 Mock
+            val batchPlan = BatchPlan(
+                userId = userId,
+                handle = handle,
+                batchSize = 100,
+                totalBatches = 5,
+                estimatedSubmissions = 450
+            )
+            every { dataSyncBatchService.createBatchPlan(userId, handle, 6, 100) } returns batchPlan
+            
+            // 모든 배치 성공 Mock
+            every { 
+                rateLimitAwareBatchService.collectBatchWithRateLimit(any(), handle, any(), 100) 
+            } returns RateLimitAwareBatchResult(
+                syncJobId = any(),
+                batchNumber = 1,
+                successful = true,
+                collectedCount = 100,
+                retryAttempts = 1,
+                rateLimitHandled = false,
+                totalRetryTimeMs = 1000L
+            )
+            
+            then("SAGA가 성공적으로 완료되어야 한다") {
+                val result = saga.startSaga(userId, handle)
+                
+                result shouldNotBe null
+                result.successful shouldBe true
+                result.sagaStatus shouldBe SagaStatus.COMPLETED
+                result.totalBatches shouldBe 5
+                result.successfulBatches shouldBe 5
+                result.failedBatches shouldBe 0
+                result.executionTimeMs shouldBeGreaterThan 0L
+                
+                // 이벤트 발행 검증
+                verify(exactly = 2) { outboxService.publishEvent(any(), any(), any()) }
+            }
+        }
+        
+        `when`("부분 실패 시나리오를 실행할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+            
+            val batchPlan = BatchPlan(
+                userId = userId,
+                handle = handle,
+                batchSize = 100,
+                totalBatches = 10,
+                estimatedSubmissions = 1000
+            )
+            every { dataSyncBatchService.createBatchPlan(userId, handle, 6, 100) } returns batchPlan
+            
+            // 70% 성공 Mock (7개 성공, 3개 실패)
+            var batchCount = 0
+            every { 
+                rateLimitAwareBatchService.collectBatchWithRateLimit(any(), handle, any(), 100) 
+            } answers {
+                batchCount++
+                if (batchCount <= 7) {
+                    RateLimitAwareBatchResult(
+                        syncJobId = firstArg(),
+                        batchNumber = batchCount,
+                        successful = true,
+                        collectedCount = 100,
+                        retryAttempts = 1,
+                        rateLimitHandled = false,
+                        totalRetryTimeMs = 1000L
+                    )
+                } else {
+                    RateLimitAwareBatchResult(
+                        syncJobId = firstArg(),
+                        batchNumber = batchCount,
+                        successful = false,
+                        collectedCount = 0,
+                        retryAttempts = 3,
+                        rateLimitHandled = true,
+                        totalRetryTimeMs = 5000L,
+                        errorMessage = "Rate limit exceeded"
+                    )
+                }
+            }
+            
+            then("부분 완료로 처리되어야 한다") {
+                val result = saga.startSaga(userId, handle)
+                
+                result shouldNotBe null
+                result.successful shouldBe false
+                result.sagaStatus shouldBe SagaStatus.PARTIALLY_COMPLETED
+                result.totalBatches shouldBe 10
+                result.successfulBatches shouldBe 7
+                result.failedBatches shouldBe 3
+                result.failureReason shouldNotBe null
+                
+                // 보상 트랜잭션 이벤트 발행 검증
+                verify(atLeast = 2) { outboxService.publishEvent(any(), any(), any()) }
+            }
+        }
+        
+        `when`("Virtual Thread 병렬 처리 성능을 테스트할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+            
+            val batchPlan = BatchPlan(
+                userId = userId,
+                handle = handle,
+                batchSize = 100,
+                totalBatches = 20, // 큰 배치 수
+                estimatedSubmissions = 2000
+            )
+            every { dataSyncBatchService.createBatchPlan(userId, handle, 6, 100) } returns batchPlan
+            
+            // 각 배치당 100ms 시뮬레이션
+            every { 
+                rateLimitAwareBatchService.collectBatchWithRateLimit(any(), handle, any(), 100) 
+            } answers {
+                Thread.sleep(100) // 100ms 시뮬레이션
+                RateLimitAwareBatchResult(
+                    syncJobId = firstArg(),
+                    batchNumber = thirdArg(),
+                    successful = true,
+                    collectedCount = 100,
+                    retryAttempts = 1,
+                    rateLimitHandled = false,
+                    totalRetryTimeMs = 100L
+                )
+            }
+            
+            then("병렬 처리로 전체 시간이 단축되어야 한다") {
+                val startTime = System.currentTimeMillis()
+                val result = saga.startSaga(userId, handle)
+                val actualTime = System.currentTimeMillis() - startTime
+                
+                result.successful shouldBe true
+                result.totalBatches shouldBe 20
+                result.successfulBatches shouldBe 20
+                
+                // 병렬 처리로 순차 처리(20 * 100ms = 2000ms)보다 빨라야 함
+                // 실제로는 Virtual Thread로 거의 동시 실행 (약 200ms 이내)
+                actualTime shouldBeLessThan 1500L // 1.5초 미만 (순차 처리의 75% 미만)
+                
+                verify(exactly = 20) { 
+                    rateLimitAwareBatchService.collectBatchWithRateLimit(any(), handle, any(), 100) 
+                }
+            }
+        }
+        
+        `when`("SAGA 재시작을 테스트할 때") {
+            val sagaId = UUID.randomUUID()
+            val userId = UUID.randomUUID()
+            
+            // 기존 체크포인트 Mock
+            val checkpoint = DataSyncCheckpoint(
+                syncJobId = sagaId,
+                userId = userId,
+                currentBatch = 7,
+                totalBatches = 10,
+                lastProcessedSubmissionId = 7L,
+                collectedCount = 700,
+                failedAttempts = 1,
+                checkpointAt = java.time.LocalDateTime.now(),
+                canResume = true
+            )
+            every { checkpointRepository.findBySyncJobId(sagaId) } returns checkpoint
+            
+            // 복구 결과 Mock
+            val recoveryResult = SyncRecoveryResult(
+                syncJobId = sagaId,
+                userId = userId,
+                recoverySuccessful = true,
+                resumedFromBatch = 7,
+                totalBatchesCompleted = 10,
+                recoveryDurationMinutes = 2L
+            )
+            every { 
+                dataSyncBatchService.recoverFailedSync(userId, "recovered", 3) 
+            } returns recoveryResult
+            
+            then("체크포인트부터 성공적으로 재시작되어야 한다") {
+                val result = saga.resumeSaga(sagaId)
+                
+                result shouldNotBe null
+                result!!.successful shouldBe true
+                result.sagaStatus shouldBe SagaStatus.RECOVERED
+                result.totalBatches shouldBe 10
+                result.successfulBatches shouldBe 10
+                result.failedBatches shouldBe 0
+                result.executionTimeMs shouldBe (2L * 60000) // 2분
+                
+                verify(exactly = 1) { 
+                    dataSyncBatchService.recoverFailedSync(userId, "recovered", 3) 
+                }
+            }
+        }
+        
+        `when`("성능 최적화를 테스트할 때") {
+            val performanceOptimizer = SagaPerformanceOptimizer()
+            
+            then("성공적인 SAGA의 성능 등급이 올바르게 계산되어야 한다") {
+                val excellentResult = InitialDataSyncSagaResult(
+                    sagaId = UUID.randomUUID(),
+                    userId = UUID.randomUUID(),
+                    successful = true,
+                    totalBatches = 10,
+                    successfulBatches = 10,
+                    failedBatches = 0,
+                    executionTimeMs = 8000L, // 10개 배치, 8초 = 800ms/배치
+                    sagaStatus = SagaStatus.COMPLETED
+                )
+                
+                val analysis = performanceOptimizer.analyzeSagaPerformance(excellentResult)
+                
+                analysis.sagaId shouldBe excellentResult.sagaId
+                analysis.successRate shouldBe 1.0
+                analysis.averageBatchTimeMs shouldBe 800.0
+                analysis.performanceGrade shouldBe PerformanceGrade.EXCELLENT
+                analysis.optimizationSuggestions shouldNotBe emptyList<String>()
+            }
+            
+            then("최적의 배치 크기가 데이터 크기에 따라 추천되어야 한다") {
+                val smallDataRecommendation = performanceOptimizer.recommendOptimalBatchSize(50)
+                val largeDataRecommendation = performanceOptimizer.recommendOptimalBatchSize(5000)
+                
+                // 작은 데이터: 작은 배치 크기
+                smallDataRecommendation.recommendedBatchSize shouldBe 25
+                
+                // 큰 데이터: 큰 배치 크기  
+                largeDataRecommendation.recommendedBatchSize shouldBeGreaterThan smallDataRecommendation.recommendedBatchSize
+                
+                // 예상 실행 시간이 계산되어야 함
+                smallDataRecommendation.estimatedExecutionTimeMinutes shouldBeGreaterThan 0
+                largeDataRecommendation.estimatedExecutionTimeMinutes shouldBeGreaterThan 0
+            }
+        }
+    }
+})
+
