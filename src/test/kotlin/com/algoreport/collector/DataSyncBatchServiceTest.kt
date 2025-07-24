@@ -2,6 +2,7 @@ package com.algoreport.collector
 
 import com.algoreport.collector.dto.SubmissionList
 import com.algoreport.collector.dto.UserInfo
+import com.algoreport.collector.dto.Submission
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -9,6 +10,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.longs.shouldBeLessThan
 import io.mockk.mockk
+import io.mockk.every
 import java.time.LocalDateTime
 import java.util.*
 
@@ -23,7 +25,25 @@ class DataSyncBatchServiceTest : BehaviorSpec({
     given("DataSyncBatchService") {
         val solvedacApiClient = mockk<SolvedacApiClient>()
         val checkpointRepository = mockk<DataSyncCheckpointRepository>()
-        val dataSyncBatchService = DataSyncBatchService(solvedacApiClient, checkpointRepository)
+        val dataSyncBatchService = DataSyncBatchServiceImpl(solvedacApiClient, checkpointRepository)
+        
+        // Mock 설정
+        every { solvedacApiClient.getSubmissions(any(), any()) } returns SubmissionList(
+            count = 100,
+            items = (1..100).map { 
+                Submission(
+                    submissionId = it.toLong(),
+                    problemId = 1000 + it,
+                    userId = "testuser",
+                    result = "맞았습니다!!",
+                    language = "Kotlin",
+                    codeLength = 500,
+                    submissionTime = "2025-07-23T10:00:00Z"
+                )
+            }
+        )
+        
+        every { checkpointRepository.save(any()) } returnsArgument 0
         
         `when`("사용자의 과거 6개월 데이터를 배치로 수집할 때") {
             val userId = UUID.randomUUID()
@@ -175,53 +195,3 @@ class DataSyncBatchServiceTest : BehaviorSpec({
     }
 })
 
-/**
- * 배치 계획 데이터 클래스 (TDD Red 단계)
- */
-data class BatchPlan(
-    val userId: UUID,
-    val handle: String,
-    val batchSize: Int,
-    val totalBatches: Int,
-    val estimatedSubmissions: Int,
-    val createdAt: LocalDateTime = LocalDateTime.now()
-)
-
-/**
- * 배치 수집 결과 데이터 클래스 (TDD Red 단계)
- */
-data class BatchCollectionResult(
-    val syncJobId: UUID,
-    val batchNumber: Int,
-    val collectedCount: Int,
-    val successful: Boolean,
-    val errorMessage: String? = null,
-    val failedAt: LocalDateTime? = null,
-    val retryAttempts: Int = 0
-)
-
-/**
- * 진행률 추적 데이터 클래스 (TDD Red 단계)
- */
-data class ProgressTracker(
-    val syncJobId: UUID,
-    val currentBatch: Int,
-    val totalBatches: Int,
-    val progressPercentage: Double,
-    val isCompleted: Boolean
-)
-
-/**
- * 체크포인트 데이터 클래스 (TDD Red 단계)
- */
-data class DataSyncCheckpoint(
-    val syncJobId: UUID,
-    val userId: UUID,
-    val currentBatch: Int,
-    val totalBatches: Int,
-    val lastProcessedSubmissionId: Long,
-    val collectedCount: Int,
-    val failedAttempts: Int = 0,
-    val checkpointAt: LocalDateTime,
-    val canResume: Boolean
-)
