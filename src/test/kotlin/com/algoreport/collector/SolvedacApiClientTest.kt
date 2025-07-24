@@ -3,6 +3,7 @@ package com.algoreport.collector
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.mockk.mockk
 import org.springframework.web.client.RestTemplate
 
@@ -48,6 +49,29 @@ class SolvedacApiClientTest : BehaviorSpec({
                 
                 result shouldNotBe null
                 result.problemId shouldBe problemId
+            }
+        }
+        
+        `when`("대용량 배치 수집을 위한 배치 계획을 수립할 때") {
+            val handle = "testuser"
+            val syncPeriodMonths = 6
+            val batchSize = 100
+            
+            then("배치 계획이 올바르게 생성되어야 한다") {
+                // RED 단계: 아직 구현되지 않은 기능에 대한 테스트
+                val dataSyncService = DataSyncBatchService(solvedacApiClient, mockk())
+                
+                val batchPlan = dataSyncService.createBatchPlan(
+                    userId = java.util.UUID.randomUUID(),
+                    handle = handle,
+                    syncPeriodMonths = syncPeriodMonths,
+                    batchSize = batchSize
+                )
+                
+                // 이 테스트는 실패해야 함 (구현체가 없으므로)
+                batchPlan shouldNotBe null
+                batchPlan.batchSize shouldBe batchSize
+                batchPlan.totalBatches shouldBeGreaterThan 0
             }
         }
     }

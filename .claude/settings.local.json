@@ -11,7 +11,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(cmd.exe:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(dir)",
+      "Bash(gradlew.bat test:*)",
+      "Bash(cmd:*)"
     ],
     "deny": []
   }
