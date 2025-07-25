@@ -76,7 +76,58 @@ curl -X POST http://localhost:8083/connectors \
 
 # 특정 테스트 클래스 실행
 ./gradlew test --tests "com.algoreport.service.StudyGroupServiceTest"
+
+# Outbox 패턴 테스트
+./gradlew test --tests "com.algoreport.config.outbox.*Test"
 ```
+
+#### **🧪 Kotest 테스트 프레임워크 사용**
+
+**모든 테스트는 Kotest BehaviorSpec을 사용합니다** (JUnit 5 금지)
+
+```kotlin
+// ✅ 올바른 Kotest 테스트 작성법
+@DataJpaTest
+@ActiveProfiles("test")
+@Transactional
+class UserServiceTest(
+    private val userRepository: UserRepository,
+    private val testEntityManager: TestEntityManager
+) : BehaviorSpec() {
+    
+    override fun extensions() = listOf(SpringExtension)
+    
+    init {
+        given("사용자가 회원가입할 때") {
+            val userData = UserRegistrationRequest("test@example.com", "password123")
+            
+            `when`("유효한 정보를 제공하면") {
+                val savedUser = userRepository.save(User.from(userData))
+                testEntityManager.flush()
+                
+                then("사용자가 정상적으로 저장되어야 한다") {
+                    savedUser.id shouldNotBe null
+                    savedUser.email shouldBe "test@example.com"
+                    savedUser.isActive shouldBe true
+                }
+            }
+        }
+    }
+}
+```
+
+**Kotest 필수 규칙:**
+- **BehaviorSpec** 상속 필수 (다른 Spec 금지)
+- **SpringExtension** 추가로 Spring Boot 호환성 확보
+- **given-when-then** BDD 스타일 사용
+- **shouldBe, shouldNotBe** 등 Kotest 매처 사용
+- **init 블록** 내부에 테스트 로직 작성
+
+**🎯 BehaviorSpec 선택 이유:**
+- **비즈니스 도메인 복잡성**: 알고리즘 문제 추천, 스터디 관리 등 복잡한 비즈니스 로직에 BDD 스타일이 적합
+- **요구사항 명확화**: given-when-then 구조로 테스트 의도가 명확하게 드러남
+- **협업 효율성**: 기획자/PM도 이해하기 쉬운 테스트 구조
+- **유지보수성**: 비즈니스 규칙 변경 시 테스트 수정이 용이
 
 ## 🏗️ **Architecture Overview**
 
@@ -94,9 +145,9 @@ curl -X POST http://localhost:8083/connectors \
 - **Cache**: Redis
 - **Search & Analysis Engine**: Elasticsearch, Kibana
 - **Authentication**: Google OAuth2 + JWT
-- **Testing**: JUnit 5, MockK, Kotest
+- **Testing**: Kotest (BehaviorSpec), MockK, Spring Boot Test
 
-### **🎯 Java 21 LTS 선택 근거 + Virtual Thread 적극 활용**
+### **🎯 Java 21 LTS 선택 근거 + Kotlin Coroutines 적극 활용**
 
 #### **Java 21 LTS vs Java 17 LTS vs Java 24**
 
@@ -104,7 +155,7 @@ curl -X POST http://localhost:8083/connectors \
 
 1. **안정성과 성능의 균형점**
    - **LTS 지원**: 2031년까지 장기 지원으로 안정적인 운영
-   - **Virtual Thread 정식 지원**: Project Loom의 Virtual Thread 완전 채택
+   - **Kotlin Coroutines 최적화**: Java 21의 최신 JVM 기능과 Coroutines의 시너지
    - **ZGC 개선**: solved.ac 대용량 데이터 수집 시 낮은 지연시간 GC
    - **Pattern Matching**: 문제 태그 및 난이도 분류 로직 간소화
 

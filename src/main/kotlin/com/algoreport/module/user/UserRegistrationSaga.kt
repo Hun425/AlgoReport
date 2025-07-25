@@ -77,7 +77,7 @@ class UserRegistrationSaga(
         )
         
         // USER_REGISTERED 이벤트 발행
-        outboxService.publish(
+        outboxService.publishEventWithSaga(
             aggregateType = "USER",
             aggregateId = user.id,
             eventType = "USER_REGISTERED",
@@ -85,10 +85,11 @@ class UserRegistrationSaga(
                 "userId" to user.id,
                 "email" to user.email,
                 "nickname" to user.nickname,
-                "profileImageUrl" to user.profileImageUrl,
+                "profileImageUrl" to (user.profileImageUrl ?: ""),
                 "provider" to "GOOGLE"
             ),
-            sagaId = sagaId
+            sagaId = sagaId,
+            sagaType = "USER_REGISTRATION_SAGA"
         )
         
         return user
@@ -99,7 +100,7 @@ class UserRegistrationSaga(
             analysisProfileService.createProfile(userId)
             
             // ANALYSIS_PROFILE_CREATED 이벤트 발행
-            outboxService.publish(
+            outboxService.publishEventWithSaga(
                 aggregateType = "ANALYSIS_PROFILE",
                 aggregateId = "analysis-profile-${UUID.randomUUID()}",
                 eventType = "ANALYSIS_PROFILE_CREATED",
@@ -108,7 +109,8 @@ class UserRegistrationSaga(
                     "profileId" to UUID.randomUUID().toString(),
                     "initializedAt" to java.time.LocalDateTime.now().toString()
                 ),
-                sagaId = sagaId
+                sagaId = sagaId,
+                sagaType = "USER_REGISTRATION_SAGA"
             )
             
         } catch (exception: Exception) {
@@ -125,7 +127,7 @@ class UserRegistrationSaga(
             emailNotificationService.sendWelcomeEmail(userId)
             
             // WELCOME_NOTIFICATION_SENT 이벤트 발행
-            outboxService.publish(
+            outboxService.publishEventWithSaga(
                 aggregateType = "NOTIFICATION",
                 aggregateId = "notification-${UUID.randomUUID()}",
                 eventType = "WELCOME_NOTIFICATION_SENT",
@@ -135,7 +137,8 @@ class UserRegistrationSaga(
                     "channel" to "EMAIL",
                     "sentAt" to java.time.LocalDateTime.now().toString()
                 ),
-                sagaId = sagaId
+                sagaId = sagaId,
+                sagaType = "USER_REGISTRATION_SAGA"
             )
             
         } catch (exception: Exception) {
