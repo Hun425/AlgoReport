@@ -11,61 +11,61 @@ import java.time.LocalDateTime
  * 사용자 정보 응답
  */
 data class UserInfo(
-    @JsonProperty("handle")
+    @param:JsonProperty("handle")
     val handle: String,
     
-    @JsonProperty("bio")
+    @param:JsonProperty("bio")
     val bio: String = "",
     
-    @JsonProperty("organizations")
+    @param:JsonProperty("organizations")
     val organizations: List<String> = emptyList(),
     
-    @JsonProperty("badge")
+    @param:JsonProperty("badge")
     val badge: String? = null,
     
-    @JsonProperty("background")
+    @param:JsonProperty("background")
     val background: String = "default",
     
-    @JsonProperty("profileImageUrl")
+    @param:JsonProperty("profileImageUrl")
     val profileImageUrl: String? = null,
     
-    @JsonProperty("solvedCount")
+    @param:JsonProperty("solvedCount")
     val solvedCount: Int = 0,
     
-    @JsonProperty("voteCount")
+    @param:JsonProperty("voteCount")
     val voteCount: Int = 0,
     
-    @JsonProperty("class")
+    @param:JsonProperty("class")
     val tier: Int = 0,
     
-    @JsonProperty("classDecoration")
+    @param:JsonProperty("classDecoration")
     val classDecoration: String = "none",
     
-    @JsonProperty("rivalCount")
+    @param:JsonProperty("rivalCount")
     val rivalCount: Int = 0,
     
-    @JsonProperty("reverseRivalCount")
+    @param:JsonProperty("reverseRivalCount")
     val reverseRivalCount: Int = 0,
     
-    @JsonProperty("maxStreak")
+    @param:JsonProperty("maxStreak")
     val maxStreak: Int = 0,
     
-    @JsonProperty("coins")
+    @param:JsonProperty("coins")
     val coins: Int = 0,
     
-    @JsonProperty("stardusts")
+    @param:JsonProperty("stardusts")
     val stardusts: Int = 0,
     
-    @JsonProperty("joinedAt")
+    @param:JsonProperty("joinedAt")
     val joinedAt: LocalDateTime? = null,
     
-    @JsonProperty("bannedUntil")
+    @param:JsonProperty("bannedUntil")
     val bannedUntil: LocalDateTime? = null,
     
-    @JsonProperty("proUntil")
+    @param:JsonProperty("proUntil")
     val proUntil: LocalDateTime? = null,
     
-    @JsonProperty("rank")
+    @param:JsonProperty("rank")
     val rank: Int = 0
 )
 
@@ -73,10 +73,10 @@ data class UserInfo(
  * 제출 이력 응답
  */
 data class SubmissionList(
-    @JsonProperty("count")
+    @param:JsonProperty("count")
     val count: Int,
     
-    @JsonProperty("items")
+    @param:JsonProperty("items")
     val items: List<Submission>
 )
 
@@ -84,31 +84,31 @@ data class SubmissionList(
  * 개별 제출 정보
  */
 data class Submission(
-    @JsonProperty("submissionId")
+    @param:JsonProperty("submissionId")
     val submissionId: Long,
     
-    @JsonProperty("problem")
+    @param:JsonProperty("problem")
     val problem: ProblemSummary,
     
-    @JsonProperty("user")
+    @param:JsonProperty("user")
     val user: UserSummary,
     
-    @JsonProperty("timestamp")
+    @param:JsonProperty("timestamp")
     val timestamp: LocalDateTime,
     
-    @JsonProperty("result")
+    @param:JsonProperty("result")
     val result: String,
     
-    @JsonProperty("language")
+    @param:JsonProperty("language")
     val language: String,
     
-    @JsonProperty("codeLength")
+    @param:JsonProperty("codeLength")
     val codeLength: Int,
     
-    @JsonProperty("runtime")
+    @param:JsonProperty("runtime")
     val runtime: Int? = null,
     
-    @JsonProperty("memory")
+    @param:JsonProperty("memory")
     val memory: Int? = null
 )
 
@@ -116,25 +116,25 @@ data class Submission(
  * 문제 요약 정보
  */
 data class ProblemSummary(
-    @JsonProperty("problemId")
+    @param:JsonProperty("problemId")
     val problemId: Int,
     
-    @JsonProperty("titleKo")
+    @param:JsonProperty("titleKo")
     val titleKo: String,
     
-    @JsonProperty("titles")
+    @param:JsonProperty("titles")
     val titles: List<Title>,
     
-    @JsonProperty("level")
+    @param:JsonProperty("level")
     val level: Int,
     
-    @JsonProperty("acceptedUserCount")
+    @param:JsonProperty("acceptedUserCount")
     val acceptedUserCount: Int,
     
-    @JsonProperty("averageTries")
+    @param:JsonProperty("averageTries")
     val averageTries: Double,
     
-    @JsonProperty("tags")
+    @param:JsonProperty("tags")
     val tags: List<Tag>
 )
 
@@ -142,28 +142,28 @@ data class ProblemSummary(
  * 문제 상세 정보
  */
 data class ProblemInfo(
-    @JsonProperty("problemId")
+    @param:JsonProperty("problemId")
     val problemId: Int,
     
-    @JsonProperty("titleKo")
+    @param:JsonProperty("titleKo")
     val titleKo: String,
     
-    @JsonProperty("titles")
+    @param:JsonProperty("titles")
     val titles: List<Title>,
     
-    @JsonProperty("level")
+    @param:JsonProperty("level")
     val level: Int,
     
-    @JsonProperty("acceptedUserCount")
+    @param:JsonProperty("acceptedUserCount")
     val acceptedUserCount: Int,
     
-    @JsonProperty("averageTries")
+    @param:JsonProperty("averageTries")
     val averageTries: Double,
     
-    @JsonProperty("tags")
+    @param:JsonProperty("tags")
     val tags: List<Tag>,
     
-    @JsonProperty("metadata")
+    @param:JsonProperty("metadata")
     val metadata: Map<String, Any> = emptyMap()
 )
 
@@ -171,19 +171,19 @@ data class ProblemInfo(
  * 사용자 요약 정보
  */
 data class UserSummary(
-    @JsonProperty("handle")
+    @param:JsonProperty("handle")
     val handle: String,
     
-    @JsonProperty("bio")
+    @param:JsonProperty("bio")
     val bio: String = "",
     
-    @JsonProperty("profileImageUrl")
+    @param:JsonProperty("profileImageUrl")
     val profileImageUrl: String? = null,
     
-    @JsonProperty("solvedCount")
+    @param:JsonProperty("solvedCount")
     val solvedCount: Int = 0,
     
-    @JsonProperty("class")
+    @param:JsonProperty("class")
     val tier: Int = 0
 )
 
@@ -191,16 +191,16 @@ data class UserSummary(
  * 문제 제목 (다국어)
  */
 data class Title(
-    @JsonProperty("language")
+    @param:JsonProperty("language")
     val language: String,
     
-    @JsonProperty("languageDisplayName")
+    @param:JsonProperty("languageDisplayName")
     val languageDisplayName: String,
     
-    @JsonProperty("title")
+    @param:JsonProperty("title")
     val title: String,
     
-    @JsonProperty("isOriginal")
+    @param:JsonProperty("isOriginal")
     val isOriginal: Boolean
 )
 
@@ -208,19 +208,19 @@ data class Title(
  * 문제 태그
  */
 data class Tag(
-    @JsonProperty("key")
+    @param:JsonProperty("key")
     val key: String,
     
-    @JsonProperty("isMeta")
+    @param:JsonProperty("isMeta")
     val isMeta: Boolean,
     
-    @JsonProperty("bojTagId")
+    @param:JsonProperty("bojTagId")
     val bojTagId: Int,
     
-    @JsonProperty("problemCount")
+    @param:JsonProperty("problemCount")
     val problemCount: Int,
     
-    @JsonProperty("displayNames")
+    @param:JsonProperty("displayNames")
     val displayNames: List<TagDisplayName>
 )
 
@@ -228,12 +228,12 @@ data class Tag(
  * 태그 표시명 (다국어)
  */
 data class TagDisplayName(
-    @JsonProperty("language")
+    @param:JsonProperty("language")
     val language: String,
     
-    @JsonProperty("name")
+    @param:JsonProperty("name")
     val name: String,
     
-    @JsonProperty("short")
+    @param:JsonProperty("short")
     val short: String
 )
