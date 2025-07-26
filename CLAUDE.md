@@ -329,6 +329,15 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
 
 ## 🔧 **개발 가이드라인**
 
+### **중요한 원칙**
+
+1. **🚨 결정사항 필수 문의**: 뭔가 결정해야 되는 사항들은 Claude가 임의로 결정하지 말고 **항상 사용자에게 문의**할 것
+   - 아키텍처 변경 결정
+   - 라이브러리 선택
+   - 테스트 전략 변경
+   - 기술적 트레이드오프 결정
+   - 코드 구조 대폭 수정
+
 ### **코딩 컨벤션**
 
 1. **Scope Functions 적극 활용** (`let`, `run`, `apply`, `also`, `with`)
