@@ -8,7 +8,7 @@ import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.longs.shouldBeGreaterThan
 import io.kotest.extensions.spring.SpringExtension
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import org.springframework.data.domain.PageRequest
@@ -21,7 +21,7 @@ import java.util.*
  * OutboxEventRepository 테스트
  * TDD Red 단계: OutboxEventRepository 인터페이스가 존재하지 않으므로 컴파일 실패 예상
  */
-@SpringBootTest
+@DataJpaTest
 @ActiveProfiles("test")
 class OutboxEventRepositoryTest : BehaviorSpec() {
     
