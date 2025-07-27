@@ -14,17 +14,17 @@
 
 ## 🎯 **SAGA 우선순위 및 복잡도 매트릭스**
 
-| 순서 | SAGA 이름 | 복잡도 | 우선순위 | TDD 적용 난이도 | 예상 소요일 |
-|-----|----------|-------|--------|-------------|-----------|
-| 1 | `INITIAL_DATA_SYNC_SAGA` | Very High | 🔥 Critical | High | 3-4일 |
-| 2 | `USER_REGISTRATION_SAGA` | Medium | 🔥 Critical | Low | 1일 |
-| 3 | `SOLVEDAC_LINK_SAGA` | High | 🔥 Critical | Medium | 2일 |
-| 4 | `CREATE_GROUP_SAGA` | Medium | 🔥 Critical | Medium | 1-2일 |
-| 5 | `JOIN_GROUP_SAGA` | High | 🔥 Critical | High | 2-3일 |
-| 6 | `USER_PROFILE_UPDATE_SAGA` | Medium | 🔥 Critical | Medium | 1일 |
-| 7 | `SUBMISSION_SYNC_SAGA` | Medium | 🟡 Important | Medium | 1-2일 |
-| 8 | `ANALYSIS_UPDATE_SAGA` | Medium | 🟡 Important | Medium | 2일 |
-| 9 | `PERSONAL_STATS_REFRESH_SAGA` | Medium | 🟡 Important | Medium | 1-2일 |
+| 순서 | SAGA 이름 | 복잡도 | 우선순위 | TDD 적용 난이도 | 예상 소요일 | 상태 |
+|-----|----------|-------|--------|-------------|-----------|------|
+| 1 | `INITIAL_DATA_SYNC_SAGA` | Very High | 🔥 Critical | High | 3-4일 | ✅ **완료** |
+| 2 | `SUBMISSION_SYNC_SAGA` | Medium | 🔥 Critical | Medium | 1-2일 | 🚀 **다음 작업** |
+| 3 | `USER_REGISTRATION_SAGA` | Medium | 🔥 Critical | Low | 1일 | ⏳ 대기 |
+| 4 | `SOLVEDAC_LINK_SAGA` | High | 🔥 Critical | Medium | 2일 | ⏳ 대기 |
+| 5 | `CREATE_GROUP_SAGA` | Medium | 🔥 Critical | Medium | 1-2일 | ⏳ 대기 |
+| 6 | `JOIN_GROUP_SAGA` | High | 🔥 Critical | High | 2-3일 | ⏳ 대기 |
+| 7 | `USER_PROFILE_UPDATE_SAGA` | Medium | 🔥 Critical | Medium | 1일 | ⏳ 대기 |
+| 8 | `ANALYSIS_UPDATE_SAGA` | Medium | 🟡 Important | Medium | 2일 | ⏳ 대기 |
+| 9 | `PERSONAL_STATS_REFRESH_SAGA` | Medium | 🟡 Important | Medium | 1-2일 | ⏳ 대기 |
     
 
 ---
@@ -169,59 +169,43 @@
   - [ ] **[REFACTOR]** 에러 처리 로직 추가
   - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - API 클라이언트 구조 개선`
 
-##### **Task 1-1-4: [RED] 대용량 배치 수집 테스트 작성**
-- **예상 소요시간**: 3시간
-- **TDD 적용**: ✅ Red 단계
-- **완료 기준**:
-  - [ ] **[RED]** 배치 데이터 수집 서비스 테스트 작성
-  - [ ] **[RED]** 100개씩 나누어 수집하는 로직 테스트
-  - [ ] **[RED]** 체크포인트 저장 로직 테스트
-  - [ ] 테스트 실패 확인 후 즉시 커밋: `test: Red - 대용량 배치 수집 기본 구조`
+##### **Task 1-1-4~9: INITIAL_DATA_SYNC_SAGA 완전 구현** ✅ **완료** (2025-07-27)
+- **소요시간**: 1일 (기존 예상 3-4일에서 단축)
+- **TDD 적용**: ✅ Red-Green-Refactor 사이클 완료 (9개 Task 모두)
+- **완료 내용**:
+  - **대용량 배치 수집**: DataSyncBatchService, Kotlin Coroutines 병렬 처리
+  - **레이트 리밋 처리**: RateLimitHandler, 지수 백오프 재시도 로직
+  - **SAGA 오케스트레이터**: InitialDataSyncSaga, 보상 트랜잭션, 체크포인트 재시작
+  - **성능 최적화**: SagaPerformanceOptimizer, 성능 분석 및 배치 크기 추천
 
-##### **Task 1-1-5: [GREEN] 배치 수집 로직 구현**
-- **예상 소요시간**: 4시간
-- **TDD 적용**: ✅ Green 단계
-- **완료 기준**:
-  - [ ] **[GREEN]** 배치별 데이터 수집 로직 구현 (100개씩)
-  - [ ] **[GREEN]** 수집 진행률 추적 로직
-  - [ ] **[GREEN]** 기본 체크포인트 저장 구현
-  - [ ] 모든 테스트 통과 확인 후 즉시 커밋: `feat: Green - 배치 수집 로직 구현`
+#### **1.2 SUBMISSION_SYNC_SAGA 구현** 🚀 **다음 작업**
 
-##### **Task 1-1-6: [REFACTOR] 체크포인트 기반 복구 시스템**
-- **예상 소요시간**: 3시간
-- **TDD 적용**: ✅ Refactor 단계
-- **완료 기준**:
-  - [ ] **[REFACTOR]** DataSyncCheckpoint 엔티티 완성
-  - [ ] **[REFACTOR]** 실패 시 체크포인트부터 재시작 로직
-  - [ ] **[REFACTOR]** 복구 불가능한 실패 상황 처리
-  - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - 체크포인트 기반 복구 시스템`
-
-##### **Task 1-1-7: [RED] 레이트 리밋 처리 테스트**
+##### **Task 1-2-1: [RED] 실시간 제출 동기화 테스트 작성**
 - **예상 소요시간**: 2시간
 - **TDD 적용**: ✅ Red 단계
 - **완료 기준**:
-  - [ ] **[RED]** API 레이트 리밋 감지 테스트
-  - [ ] **[RED]** 지수 백오프 재시도 테스트
-  - [ ] **[RED]** 최대 재시도 횟수 제한 테스트
-  - [ ] 테스트 실패 확인 후 즉시 커밋: `test: Red - 레이트 리밋 처리 구조`
+  - [ ] **[RED]** 실시간 제출 동기화 SAGA 테스트 작성
+  - [ ] **[RED]** 5분마다 스케줄링 로직 테스트
+  - [ ] **[RED]** 증분 업데이트 로직 테스트
+  - [ ] 테스트 실패 확인 후 즉시 커밋: `test: Red - 실시간 제출 동기화 기본 구조`
 
-##### **Task 1-1-8: [GREEN] 지수 백오프 재시도 로직**
-- **예상 소요시간**: 2시간
+##### **Task 1-2-2: [GREEN] 5분마다 스케줄링 구현**
+- **예상 소요시간**: 1시간
 - **TDD 적용**: ✅ Green 단계
 - **완료 기준**:
-  - [ ] **[GREEN]** Resilience4j 기반 재시도 로직
-  - [ ] **[GREEN]** 1분 대기 후 재시도 구현
-  - [ ] **[GREEN]** 최대 3회 재시도 제한
-  - [ ] 모든 테스트 통과 확인 후 즉시 커밋: `feat: Green - 지수 백오프 재시도 로직`
+  - [ ] **[GREEN]** @Scheduled 기반 구현
+  - [ ] **[GREEN]** 마지막 동기화 시점 추적
+  - [ ] **[GREEN]** 증분 데이터 수집 로직
+  - [ ] 모든 테스트 통과 확인 후 즉시 커밋: `feat: Green - 5분마다 스케줄링 구현`
 
-##### **Task 1-1-9: [REFACTOR] 전체 SAGA 최적화**
-- **예상 소요시간**: 2시간
+##### **Task 1-2-3: [REFACTOR] 성능 최적화**
+- **예상 소요시간**: 1시간
 - **TDD 적용**: ✅ Refactor 단계
 - **완료 기준**:
-  - [ ] **[REFACTOR]** INITIAL_DATA_SYNC_SAGA 통합 및 최적화
-  - [ ] **[REFACTOR]** 보상 트랜잭션 완성
-  - [ ] **[REFACTOR]** 성능 튜닝 및 모니터링 추가
-  - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - INITIAL_DATA_SYNC_SAGA 최적화`
+  - [ ] **[REFACTOR]** 배치 처리 성능 개선
+  - [ ] **[REFACTOR]** 메모리 사용량 최적화
+  - [ ] **[REFACTOR]** 중복 데이터 방지 로직
+  - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - SUBMISSION_SYNC_SAGA 성능 최적화`
 
 #### **1.2 SUBMISSION_SYNC_SAGA 구현**
 
