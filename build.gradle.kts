@@ -83,4 +83,6 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    maxHeapSize = "2g"
+    jvmArgs = listOf("-XX:MaxMetaspaceSize=512m")
 }

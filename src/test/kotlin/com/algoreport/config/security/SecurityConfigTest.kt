@@ -1,10 +1,14 @@
 package com.algoreport.config.security
 
+import com.algoreport.collector.SolvedacApiClient
+import com.algoreport.collector.SubmissionSyncService
+import com.algoreport.collector.SubmissionRepository
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureWebMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.TestConstructor
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
@@ -19,7 +23,7 @@ import org.springframework.web.context.WebApplicationContext
  * SecurityConfig 테스트
  * TDD Red 단계: SecurityConfig 클래스가 아직 존재하지 않으므로 테스트 실패 예상
  */
-@SpringBootTest
+@SpringBootTest(classes = [com.algoreport.AlgoReportApplication::class, com.algoreport.config.TestConfiguration::class])
 @AutoConfigureWebMvc
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 @TestPropertySource(properties = [

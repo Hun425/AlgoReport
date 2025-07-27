@@ -18,7 +18,7 @@ import java.util.*
  * OutboxEvent 엔티티 테스트
  * TDD Red 단계: OutboxEvent 엔티티 클래스가 존재하지 않으므로 컴파일 실패 예상
  */
-@SpringBootTest
+@SpringBootTest(classes = [com.algoreport.AlgoReportApplication::class, com.algoreport.config.TestConfiguration::class])
 @ActiveProfiles("test")
 class OutboxEventTest : BehaviorSpec() {
     

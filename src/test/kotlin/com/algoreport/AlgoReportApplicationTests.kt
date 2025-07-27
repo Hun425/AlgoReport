@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 
-@SpringBootTest
+@SpringBootTest(classes = [AlgoReportApplication::class, com.algoreport.config.TestConfiguration::class])
 @ActiveProfiles("test")
 class AlgoReportApplicationTests {
 
