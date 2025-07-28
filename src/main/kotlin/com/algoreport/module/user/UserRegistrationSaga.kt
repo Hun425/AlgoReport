@@ -62,8 +62,10 @@ class UserRegistrationSaga(
     }
     
     private fun createUserAccount(request: UserRegistrationRequest, sagaId: UUID): User {
-        // Google OAuth2 인증 검증 (간소화된 구현)
-        if (request.authCode == "invalid_auth_code") {
+        // OAuth2 인증 검증 - OAuth2 플로우에서는 이미 검증됨
+        if (request.authCode.startsWith("oauth2_")) {
+            logger.info("Processing OAuth2 user registration: ${request.email}")
+        } else if (request.authCode == "invalid_auth_code") {
             throw IllegalArgumentException("Invalid Google OAuth2 auth code")
         }
         
