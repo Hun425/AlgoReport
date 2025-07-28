@@ -16,7 +16,11 @@ class SolvedacLinkSaga(
 ) {
     
     fun start(request: SolvedacLinkRequest): SolvedacLinkResult {
-        // RED 단계: 아무것도 구현하지 않음 (테스트 실패하도록)
-        TODO("Not yet implemented")
+        // RED 단계: 테스트가 실패하도록 잘못된 값 반환
+        return SolvedacLinkResult(
+            sagaStatus = SagaStatus.FAILED,  // 테스트는 COMPLETED를 기대함 → 실패
+            linkedHandle = null,             // 테스트는 handle을 기대함 → 실패
+            errorMessage = "Not implemented yet"
+        )
     }
 }
