@@ -52,6 +52,22 @@ class UserService {
         return users[userId]
     }
     
+    fun updateSolvedacInfo(userId: String, solvedacHandle: String, tier: Int, solvedCount: Int): User? {
+        val user = users[userId] ?: return null
+        val updatedUser = user.copy(
+            solvedacHandle = solvedacHandle,
+            solvedacTier = tier,
+            solvedacSolvedCount = solvedCount
+        )
+        users[userId] = updatedUser
+        return updatedUser
+    }
+    
+    fun existsBySolvedacHandle(handle: String): Boolean {
+        // TODO: [GREEN] solved.ac 핸들 중복 체크 로직 구현 필요
+        return users.values.any { it.solvedacHandle == handle }
+    }
+    
     // 테스트용 메서드
     fun clear() {
         users.clear()
