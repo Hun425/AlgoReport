@@ -20,10 +20,39 @@ class SubmissionSyncSaga(
     
     /**
      * 스케줄링된 제출 동기화 실행
+     * 
+     * TDD Green 단계: 테스트 통과를 위한 최소한의 구현
+     * InitialDataSyncSaga 패턴을 참고하여 Kotlin Coroutines 사용
      */
     @Scheduled(fixedRate = 300000) // 5분마다 실행
     fun scheduledSubmissionSync() {
-        // 스케줄링 구현은 GREEN 단계에서
+        // 기존 InitialDataSyncSaga 패턴을 따라 suspend 함수 호출
+        kotlinx.coroutines.runBlocking {
+            try {
+                val result = executeSync()
+                if (result.successful) {
+                    // 성공 시 이벤트 발행
+                    outboxService.publishEvent(
+                        aggregateType = "SUBMISSION_SYNC",
+                        aggregateId = "scheduled-sync-${System.currentTimeMillis()}",
+                        eventType = "SCHEDULED_SUBMISSION_SYNC_COMPLETED",
+                        eventData = mapOf(
+                            "processedUsers" to result.processedUsers,
+                            "newSubmissions" to result.newSubmissionsCount,
+                            "executionTimeMs" to result.executionTimeMs
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                // 실패 시 에러 이벤트 발행
+                outboxService.publishEvent(
+                    aggregateType = "SUBMISSION_SYNC",
+                    aggregateId = "scheduled-sync-error-${System.currentTimeMillis()}",
+                    eventType = "SCHEDULED_SUBMISSION_SYNC_FAILED",
+                    eventData = mapOf("error" to (e.message ?: "Unknown error"))
+                )
+            }
+        }
     }
     
     /**
