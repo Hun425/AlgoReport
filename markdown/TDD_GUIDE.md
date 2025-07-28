@@ -53,6 +53,104 @@
 2. **🟢 Green (테스트 통과를 위한 최소한의 코드 작성)**: 테스트를 통과하기 위한 **최소한의 코드**만 구현.
     
 3. **🔵 Refactor (리팩토링)**: 테스트가 통과하는 상태를 유지하면서 코드 품질 향상.
+
+---
+
+## 🔴 **RED 단계 올바른 방법론 (중요!)**
+
+### **❌ 잘못된 RED 단계 방법들**
+
+#### **방법 1: 클래스 없음 → 컴파일 실패**
+```kotlin
+// 테스트만 작성, 구현체 없음
+class SolvedacLinkSagaTest {
+    @Test
+    fun should_link_solvedac_account() {
+        val saga = SolvedacLinkSaga() // ← 클래스가 없어서 컴파일 실패
+    }
+}
+```
+**문제**: 컴파일이 안 되면 테스트 실행 불가 ❌
+
+#### **방법 2: 빈 구현체 → 예외 발생**
+```kotlin
+class SolvedacLinkSaga {
+    fun start(request: SolvedacLinkRequest): SolvedacLinkResult {
+        TODO("Not implemented")  // NotImplementedError 던짐
+    }
+}
+```
+**문제**: 예외로 테스트 중단, assertion 도달 불가 ❌
+
+### **✅ 올바른 RED 단계 방법**
+
+#### **방법 3: 가짜 구현체 → Assertion 실패**
+```kotlin
+class SolvedacLinkSaga {
+    fun start(request: SolvedacLinkRequest): SolvedacLinkResult {
+        // 의도적으로 잘못된 값 반환 (테스트 실패하도록)
+        return SolvedacLinkResult(
+            sagaStatus = SagaStatus.FAILED,  // 테스트는 COMPLETED 기대
+            linkedHandle = null,             // 테스트는 실제 handle 기대
+            errorMessage = "Not implemented"
+        )
+    }
+}
+```
+
+### **🎯 올바른 RED 단계 조건**
+1. **✅ 컴파일 성공** - 모든 클래스와 메서드 존재
+2. **✅ 테스트 실행 가능** - 예외 발생하지 않음  
+3. **✅ Assertion에서 실패** - 기대값과 실제값 불일치
+4. **✅ 실패 이유가 명확** - 어떤 부분이 구현되지 않았는지 알 수 있음
+
+### **🔍 실제 적용 예시**
+
+**Controller RED 단계:**
+```kotlin
+@RestController
+class UserController {
+    @GetMapping("/api/v1/users/{id}")
+    fun getUser(@PathVariable id: String): ResponseEntity<UserDto> {
+        // RED: 의도적으로 404 반환 (테스트는 200 기대)
+        return ResponseEntity.notFound().build()
+    }
+}
+```
+
+**Service RED 단계:**
+```kotlin
+@Service  
+class UserService {
+    fun findUserById(id: String): User? {
+        // RED: 의도적으로 null 반환 (테스트는 User 객체 기대)
+        return null
+    }
+}
+```
+
+**Repository RED 단계:**
+```kotlin
+@Repository
+class UserRepository {
+    fun save(user: User): User {
+        // RED: 의도적으로 빈 User 반환 (테스트는 저장된 User + ID 기대)
+        return User(id = "", email = "", nickname = "")
+    }
+}
+```
+
+### **📝 RED 단계 체크리스트**
+
+작업 전 다음을 확인:
+- [ ] 모든 클래스가 존재하는가?
+- [ ] 모든 메서드가 정의되어 있는가?
+- [ ] 컴파일이 성공하는가?
+- [ ] 테스트 실행 시 예외가 발생하지 않는가?
+- [ ] Assertion에서 명확히 실패하는가?
+- [ ] 실패 원인이 "구현되지 않음" 때문인가?
+
+**🚨 기억하세요: RED 단계는 "테스트 중단"이 아니라 "테스트 실패"입니다!**
     
 
 ## 2. 알고리포트 프로젝트 TDD 적용 규칙
