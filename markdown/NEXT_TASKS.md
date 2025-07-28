@@ -198,14 +198,14 @@
   - [ ] **[GREEN]** 증분 데이터 수집 로직
   - [ ] 모든 테스트 통과 확인 후 즉시 커밋: `feat: Green - 5분마다 스케줄링 구현`
 
-##### **Task 1-2-3: [REFACTOR] 성능 최적화**
-- **예상 소요시간**: 1시간
-- **TDD 적용**: ✅ Refactor 단계
+##### **Task 1-2-3: [REFACTOR] 성능 최적화** ✅ **완료** (2025-07-28)
+- **예상 소요시간**: 1시간 (실제 소요: 1시간)
+- **TDD 적용**: ✅ Refactor 단계 ✅ **완료**
 - **완료 기준**:
-  - [ ] **[REFACTOR]** 배치 처리 성능 개선
-  - [ ] **[REFACTOR]** 메모리 사용량 최적화
-  - [ ] **[REFACTOR]** 중복 데이터 방지 로직
-  - [ ] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - SUBMISSION_SYNC_SAGA 성능 최적화`
+  - [x] **[REFACTOR]** 배치 처리 성능 개선 ✅ **완료** (Kotlin Coroutines 병렬 처리)
+  - [x] **[REFACTOR]** 메모리 사용량 최적화 ✅ **완료** (배치 중복 체크, 결과 집계 분리)
+  - [x] **[REFACTOR]** 중복 데이터 방지 로직 ✅ **완료** (Set 기반 중복 체크)
+  - [x] 테스트 통과 유지하며 즉시 커밋: `refactor: Refactor - SUBMISSION_SYNC_SAGA 성능 최적화` ✅ **완료**
 
 #### **1.2 SUBMISSION_SYNC_SAGA 구현**
 
