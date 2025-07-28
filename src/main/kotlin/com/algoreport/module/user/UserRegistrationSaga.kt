@@ -204,5 +204,20 @@ data class User(
     val email: String,
     val nickname: String,
     val profileImageUrl: String? = null,
-    val provider: AuthProvider
+    val provider: AuthProvider,
+    val solvedacHandle: String? = null,
+    val solvedacTier: Int? = null,
+    val solvedacSolvedCount: Int? = null
+)
+
+// SOLVEDAC_LINK_SAGA 관련 데이터 클래스들
+data class SolvedacLinkRequest(
+    val userId: String,
+    val solvedacHandle: String
+)
+
+data class SolvedacLinkResult(
+    val sagaStatus: SagaStatus,
+    val linkedHandle: String?,
+    val errorMessage: String? = null
 )
