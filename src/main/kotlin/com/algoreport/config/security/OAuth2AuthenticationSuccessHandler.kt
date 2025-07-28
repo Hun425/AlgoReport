@@ -21,7 +21,7 @@ class OAuth2AuthenticationSuccessHandler(
 ) : SimpleUrlAuthenticationSuccessHandler() {
     
     companion object {
-        private val logger = LoggerFactory.getLogger(OAuth2AuthenticationSuccessHandler::class.java)
+        private val log = LoggerFactory.getLogger(OAuth2AuthenticationSuccessHandler::class.java)
         private const val FRONTEND_REDIRECT_URL = "http://localhost:3000/auth/callback"
     }
     
@@ -35,10 +35,10 @@ class OAuth2AuthenticationSuccessHandler(
             val email = oauth2User.attributes["email"] as? String
             val userId = oauth2User.attributes["userId"] as? String
             
-            logger.info("OAuth2 authentication successful for user: $email")
+            log.info("OAuth2 authentication successful for user: $email")
             
             if (email == null || userId == null) {
-                logger.error("Required user information missing from OAuth2 authentication")
+                log.error("Required user information missing from OAuth2 authentication")
                 redirectToError(response, "Missing user information")
                 return
             }
@@ -47,7 +47,7 @@ class OAuth2AuthenticationSuccessHandler(
             val accessToken = jwtUtil.generateAccessToken(userId, email)
             val refreshToken = jwtUtil.generateRefreshToken(userId)
             
-            logger.info("Generated JWT tokens for user: $email")
+            log.info("Generated JWT tokens for user: $email")
             
             // 프론트엔드로 리다이렉트 (토큰을 쿼리 파라미터로 전달)
             val redirectUrl = UriComponentsBuilder.fromUriString(FRONTEND_REDIRECT_URL)
@@ -59,7 +59,7 @@ class OAuth2AuthenticationSuccessHandler(
             redirectStrategy.sendRedirect(request, response, redirectUrl)
             
         } catch (ex: Exception) {
-            logger.error("Failed to process OAuth2 authentication success", ex)
+            log.error("Failed to process OAuth2 authentication success", ex)
             redirectToError(response, "Authentication processing failed")
         }
     }
@@ -73,7 +73,7 @@ class OAuth2AuthenticationSuccessHandler(
         try {
             response.sendRedirect(errorUrl)
         } catch (ex: Exception) {
-            logger.error("Failed to redirect to error page", ex)
+            log.error("Failed to redirect to error page", ex)
         }
     }
 }

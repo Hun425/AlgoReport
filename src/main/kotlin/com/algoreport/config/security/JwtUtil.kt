@@ -27,7 +27,40 @@ class JwtUtil(
     }
     
     /**
-     * 사용자 ID를 기반으로 JWT 토큰 생성
+     * Access Token 생성 (String userId)
+     */
+    fun generateAccessToken(userId: String, email: String): String {
+        val now = Date()
+        val expiryDate = Date(now.time + expirationMs)
+        
+        return Jwts.builder()
+            .subject(userId)
+            .claim("email", email)
+            .claim("type", "access")
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(key)
+            .compact()
+    }
+    
+    /**
+     * Refresh Token 생성 (String userId)  
+     */
+    fun generateRefreshToken(userId: String): String {
+        val now = Date()
+        val expiryDate = Date(now.time + (expirationMs * 7)) // 7배 긴 만료시간
+        
+        return Jwts.builder()
+            .subject(userId)
+            .claim("type", "refresh")
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(key)
+            .compact()
+    }
+    
+    /**
+     * 사용자 ID를 기반으로 JWT 토큰 생성 (기존 메서드)
      */
     fun generateToken(userId: Long, additionalClaims: Map<String, Any> = emptyMap()): String {
         val now = Date()
