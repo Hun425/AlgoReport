@@ -1,6 +1,7 @@
 package com.algoreport.module.user
 
 import com.algoreport.config.outbox.OutboxService
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
@@ -24,6 +25,10 @@ class UserRegistrationSaga(
     private val emailNotificationService: EmailNotificationService,
     private val outboxService: OutboxService
 ) {
+    
+    companion object {
+        private val logger = LoggerFactory.getLogger(UserRegistrationSaga::class.java)
+    }
     
     @Transactional
     fun start(request: UserRegistrationRequest): UserRegistrationResult {
@@ -146,8 +151,8 @@ class UserRegistrationSaga(
         }
     }
     
-    private fun executeCompensation(email: String, originalException: Exception): UserRegistrationResult {
-        return try {
+    private fun executeCompensation(email: String, originalException: Exception) {
+        try {
             // 사용자 삭제 (존재하는 경우)
             userService.findByEmail(email)?.let { user ->
                 // 관련 데이터 정리
@@ -155,19 +160,8 @@ class UserRegistrationSaga(
                 notificationSettingsService.deleteSettings(user.id)
                 userService.deleteUser(user.id)
             }
-            
-            UserRegistrationResult(
-                sagaStatus = SagaStatus.COMPENSATED,
-                userId = null,
-                errorMessage = "Registration failed and compensated: ${originalException.message}"
-            )
-            
         } catch (compensationException: Exception) {
-            UserRegistrationResult(
-                sagaStatus = SagaStatus.FAILED,
-                userId = null,
-                errorMessage = "Compensation also failed: ${compensationException.message}"
-            )
+            logger.error("Compensation transaction failed for email: $email", compensationException)
         }
     }
 }

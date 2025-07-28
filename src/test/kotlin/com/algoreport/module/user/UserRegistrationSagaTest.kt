@@ -7,7 +7,6 @@ import io.kotest.extensions.spring.SpringExtension
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
-import org.junit.jupiter.api.Disabled
 
 /**
  * USER_REGISTRATION_SAGA 테스트
@@ -22,14 +21,13 @@ import org.junit.jupiter.api.Disabled
 @SpringBootTest(classes = [com.algoreport.AlgoReportApplication::class, com.algoreport.config.TestConfiguration::class])
 @ActiveProfiles("test")
 @Transactional
-@Disabled("USER_REGISTRATION_SAGA 관련 클래스들이 아직 구현되지 않음")
 class UserRegistrationSagaTest(
     private val userRegistrationSaga: UserRegistrationSaga,
     private val userService: UserService,
     private val analysisProfileService: AnalysisProfileService,
     private val notificationSettingsService: NotificationSettingsService,
     private val emailNotificationService: EmailNotificationService,
-    private val outboxEventPublisher: OutboxEventPublisher
+    private val outboxService: com.algoreport.config.outbox.OutboxService
 ) : BehaviorSpec() {
     
     override fun extensions() = listOf(SpringExtension)
@@ -41,7 +39,7 @@ class UserRegistrationSagaTest(
             analysisProfileService.clear()
             notificationSettingsService.clear()
             emailNotificationService.clear()
-            outboxEventPublisher.clear()
+            // outboxService는 clear 메서드가 없으므로 제거
         }
         
         given("USER_REGISTRATION_SAGA가 실행될 때") {
