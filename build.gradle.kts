@@ -60,6 +60,10 @@ dependencies {
     // Resilience4j (for retry logic)
     implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
     
+    // SpringDoc OpenAPI 3 (Swagger)
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.6.0")
+    
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
