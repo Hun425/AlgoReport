@@ -107,7 +107,8 @@
 - [x] **Task 2-1-1**: [RED] OAuth2 사용자 등록 테스트 ✅ **완료**
 - [x] **Task 2-1-2**: [GREEN] 3단계 SAGA 구현 ✅ **완료**  
 - [x] **Task 2-1-3**: [REFACTOR] 보상 트랜잭션 완성 ✅ **완료**
-  - **완료 내용**: 테스트-구현체 정합성 확보, SLF4J 로거 적용, 모든 테스트 통과
+- [x] **Task 2-1-4**: Google OAuth2 실제 구현 ✅ **완료**
+  - **완료 내용**: 실제 Google OAuth2 플로우 구현, USER_REGISTRATION_SAGA 연동, JWT 토큰 발급
 
 #### **2.2 SOLVEDAC_LINK_SAGA 구현** 🚀 **다음 작업**
 - [ ] **Task 2-2-1**: [RED] solved.ac 계정 연동 테스트
