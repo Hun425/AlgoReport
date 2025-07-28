@@ -23,3 +23,14 @@ data class SyncResult(
     val syncStatus: SyncStatus,
     val errorMessage: String? = null
 )
+
+/**
+ * 개별 사용자 동기화 결과 (Refactor 단계에서 추가)
+ */
+data class UserSyncResult(
+    val userId: java.util.UUID,
+    val successful: Boolean,
+    val newSubmissionsCount: Int = 0,
+    val duplicatesSkipped: Int = 0,
+    val errorMessage: String? = null
+)
