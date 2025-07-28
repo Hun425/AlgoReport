@@ -151,6 +151,89 @@ class UserRepository {
 - [ ] 실패 원인이 "구현되지 않음" 때문인가?
 
 **🚨 기억하세요: RED 단계는 "테스트 중단"이 아니라 "테스트 실패"입니다!**
+
+---
+
+## 📝 **TODO 주석 활용한 TDD 단계 관리 (필수!)**
+
+### **🎯 TODO 주석의 목적**
+1. **진행 상황 추적**: 어떤 부분이 RED/GREEN/REFACTOR 중 어느 단계인지 명확히 표시
+2. **나중에 쉽게 찾기**: IDE에서 TODO 검색으로 미완성 부분 빠르게 발견
+3. **컨텍스트 보존**: 왜 이 부분이 미완성인지, 다음에 뭘 해야 하는지 명확히 기록
+4. **협업 효율성**: 다른 개발자도 현재 작업 상황과 다음 할 일을 바로 파악 가능
+
+### **📋 TODO 주석 컨벤션 (반드시 준수)**
+
+```kotlin
+// TODO: [RED] - 테스트 작성 단계에서 해야 할 일
+// TODO: [GREEN] - 기본 구현 단계에서 해야 할 일  
+// TODO: [REFACTOR] - 리팩토링 단계에서 해야 할 일
+// TODO: [BUG] - 버그 수정이 필요한 부분
+// TODO: [OPTIMIZE] - 성능 최적화가 필요한 부분
+// TODO: [DOCS] - 문서화가 필요한 부분
+```
+
+### **✅ 올바른 TODO 주석 사용 예시**
+
+**RED 단계 구현체:**
+```kotlin
+class SolvedacLinkSaga {
+    fun start(request: SolvedacLinkRequest): SolvedacLinkResult {
+        // TODO: [GREEN] solved.ac API 호출 및 사용자 검증 로직 구현 필요
+        // TODO: [GREEN] 사용자 프로필에 solved.ac 정보 업데이트 로직 구현 필요  
+        // TODO: [GREEN] OutboxService를 통한 SOLVEDAC_LINKED 이벤트 발행 구현 필요
+        // TODO: [REFACTOR] 중복 핸들 체크 및 보상 트랜잭션 로직 추가 필요
+        
+        return SolvedacLinkResult(
+            sagaStatus = SagaStatus.FAILED,  // TODO: [GREEN] 성공 시 COMPLETED로 변경
+            linkedHandle = null,             // TODO: [GREEN] 실제 연동된 handle 반환
+            errorMessage = "Not implemented" // TODO: [GREEN] 성공 시 null로 변경
+        )
+    }
+}
+```
+
+**GREEN 단계 구현 중:**
+```kotlin
+class SolvedacLinkSaga {
+    fun start(request: SolvedacLinkRequest): SolvedacLinkResult {
+        // ✅ GREEN: solved.ac API 호출 구현 완료
+        val userInfo = solvedacApiClient.getUserInfo(request.solvedacHandle)
+        
+        // TODO: [GREEN] 중복 핸들 체크 로직 구현 필요
+        // TODO: [GREEN] 사용자 프로필 업데이트 로직 구현 필요
+        // TODO: [REFACTOR] 예외 처리 및 보상 트랜잭션 로직 추가 필요
+        
+        return SolvedacLinkResult(
+            sagaStatus = SagaStatus.COMPLETED,
+            linkedHandle = request.solvedacHandle,
+            errorMessage = null
+        )
+    }
+}
+```
+
+### **🔍 TODO 주석 관리 규칙**
+
+1. **완료된 작업**: TODO 주석을 제거하거나 `✅ GREEN:` 형태로 완료 표시
+2. **단계별 정리**: 각 TDD 단계 완료 시 해당 TODO들 정리
+3. **우선순위 표시**: 긴급한 TODO는 `TODO: [GREEN] [URGENT]` 형태로 표시
+4. **연관 작업**: 관련된 TODO는 같은 위치에 그룹화
+
+### **📝 TODO 주석 작성 체크리스트**
+
+작업 시작 전:
+- [ ] 현재 단계(RED/GREEN/REFACTOR)를 TODO에 명시했는가?
+- [ ] 구체적으로 무엇을 해야 하는지 명확히 기술했는가?
+- [ ] 다른 개발자가 봐도 이해할 수 있게 작성했는가?
+- [ ] 관련된 TODO들을 적절히 그룹화했는가?
+
+작업 완료 후:
+- [ ] 완료된 TODO는 제거하거나 완료 표시했는가?
+- [ ] 새로 발견된 작업은 적절한 TODO로 추가했는가?
+- [ ] 다음 단계를 위한 TODO를 준비했는가?
+
+**🚨 중요: TODO 주석은 TDD 사이클 관리의 핵심 도구입니다. 반드시 활용하세요!**
     
 
 ## 2. 알고리포트 프로젝트 TDD 적용 규칙
