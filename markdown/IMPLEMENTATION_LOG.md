@@ -250,10 +250,25 @@
 - **커밋 내역**:
   - `feat: USER_REGISTRATION_SAGA 테스트-구현체 정합성 완료` (a9cb8af)
 
+### **Task 2-1-4: Google OAuth2 실제 구현** ✅ **완료** (2025-07-28) 
+- **완료 내용**:
+  - **application.yml OAuth2 설정**: Google Client ID/Secret 환경변수 지원
+  - **CustomOAuth2UserService**: Google OAuth2 사용자 정보를 USER_REGISTRATION_SAGA와 연동
+  - **OAuth2AuthenticationSuccessHandler**: JWT 토큰 생성 후 프론트엔드로 리다이렉트
+  - **SecurityConfig 연결**: CustomOAuth2UserService를 OAuth2 설정에 연결
+  - **USER_REGISTRATION_SAGA 연동**: OAuth2 플로우와 기존 SAGA 연결
+
+- **실제 사용 가능**:
+  - Google 로그인 URL: `http://localhost:8080/oauth2/authorization/google`
+  - 완전한 OAuth2 → 사용자 등록 → JWT 토큰 발급 플로우 구현
+
+- **커밋 내역**:
+  - `feat: Google OAuth2 실제 구현 완료` (7296f4b)
+
 ## 📈 **Phase 2 진행률**
 
-- **전체 진행률**: 33% (Task 2-1 완료, Task 2-2, 2-3 대기)
-- **현재 상태**: USER_REGISTRATION_SAGA 완료
+- **전체 진행률**: 50% (Task 2-1 완료, Task 2-2, 2-3 대기)
+- **현재 상태**: USER_REGISTRATION_SAGA + Google OAuth2 완료
 - **다음 작업**: SOLVEDAC_LINK_SAGA 구현
 
 ## 🎯 **다음 우선순위**
