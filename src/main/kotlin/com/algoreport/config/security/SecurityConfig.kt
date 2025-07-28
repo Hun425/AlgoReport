@@ -17,7 +17,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val oauth2SuccessHandler: OAuth2AuthenticationSuccessHandler,
-    private val oauth2FailureHandler: OAuth2AuthenticationFailureHandler
+    private val oauth2FailureHandler: OAuth2AuthenticationFailureHandler,
+    private val customOAuth2UserService: CustomOAuth2UserService
 ) {
     
     companion object {
@@ -69,6 +70,9 @@ class SecurityConfig(
                     }
                     .redirectionEndpoint { 
                         it.baseUri(OAUTH2_REDIRECTION_BASE_URI) 
+                    }
+                    .userInfoEndpoint { 
+                        it.userService(customOAuth2UserService) 
                     }
                     .successHandler(oauth2SuccessHandler)
                     .failureHandler(oauth2FailureHandler)
