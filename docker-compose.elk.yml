@@ -1,0 +1,204 @@
+version: '3.8'
+
+services:
+  # Elasticsearch - 로그 저장 및 검색
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: algoreport-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms2g -Xmx4g"  # 32GB 환경에서 로그용 4GB 할당
+      - xpack.security.enabled=false   # 개발환경용 보안 비활성
+      - indices.memory.index_buffer_size=20%
+      - cluster.name=algoreport-logs
+      - bootstrap.memory_lock=true
+      - "logger.org.elasticsearch.discovery=WARN"
+      - "logger.org.elasticsearch.cluster.service=WARN"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    deploy:
+      resources:
+        limits:
+          memory: 5g
+        reservations:
+          memory: 4g
+    networks:
+      - elk-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Logstash - 로그 수집 및 처리
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: algoreport-logstash
+    environment:
+      - "LS_JAVA_OPTS=-Xms1g -Xmx2g"  # 로그용으로 2GB 할당
+      - pipeline.workers=2
+      - pipeline.batch.size=500
+      - pipeline.batch.delay=50
+      - config.reload.automatic=true
+      - config.reload.interval=3s
+    volumes:
+      - ./logstash/config:/usr/share/logstash/pipeline:ro  # 파이프라인 설정
+      - ./logstash/patterns:/opt/logstash/patterns:ro      # 커스텀 패턴
+      - ./logs:/app/logs:ro                                # Spring Boot 로그 디렉토리 (읽기 전용)
+      - ./logstash/data:/usr/share/logstash/data           # Logstash 상태 데이터
+    ports:
+      - "5044:5044"  # Beats input
+      - "5000:5000"  # TCP input (로그백 TCP appender용)
+      - "9600:9600"  # Logstash monitoring API
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+        reservations:
+          memory: 2g
+    networks:
+      - elk-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kibana - 로그 시각화 대시보드
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: algoreport-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=algoreport-kibana
+      - SERVER_HOST=0.0.0.0
+      - ELASTICSEARCH_USERNAME=
+      - ELASTICSEARCH_PASSWORD=
+      - XPACK_MONITORING_ENABLED=false
+      - XPACK_SECURITY_ENABLED=false
+      - SERVER_MAXPAYLOAD=10485760  # 10MB
+    ports:
+      - "5601:5601"
+    volumes:
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+      - kibana_data:/usr/share/kibana/data
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
+    networks:
+      - elk-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # 로그 로테이션 및 정리 (옵션)
+  logrotate:
+    image: alpine:3.18
+    container_name: algoreport-logrotate
+    volumes:
+      - ./logs:/app/logs
+      - ./scripts/logrotate.conf:/etc/logrotate.conf:ro
+    command: >
+      sh -c "
+        apk add --no-cache logrotate &&
+        crond -f -d 8
+      "
+    restart: unless-stopped
+    networks:
+      - elk-network
+
+volumes:
+  elasticsearch_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./elasticsearch/data
+  kibana_data:
+    driver: local
+
+networks:
+  elk-network:
+    driver: bridge
+    name: algoreport-elk
+
+# Phase 2 확장을 위한 주석 처리된 서비스들
+# 향후 비즈니스 데이터 분석 기능 추가 시 활성화
+
+# kafka:
+#   image: confluentinc/cp-kafka:7.4.0
+#   container_name: algoreport-kafka
+#   environment:
+#     KAFKA_BROKER_ID: 1
+#     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+#     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#   ports:
+#     - "9092:9092"
+#   depends_on:
+#     - zookeeper
+#   networks:
+#     - elk-network
+
+# zookeeper:
+#   image: confluentinc/cp-zookeeper:7.4.0
+#   container_name: algoreport-zookeeper
+#   environment:
+#     ZOOKEEPER_CLIENT_PORT: 2181
+#     ZOOKEEPER_TICK_TIME: 2000
+#   ports:
+#     - "2181:2181"
+#   networks:
+#     - elk-network
+
+# debezium:
+#   image: debezium/connect:2.4
+#   container_name: algoreport-debezium
+#   environment:
+#     BOOTSTRAP_SERVERS: kafka:9092
+#     GROUP_ID: debezium-group
+#     CONFIG_STORAGE_TOPIC: debezium-configs
+#     OFFSET_STORAGE_TOPIC: debezium-offsets
+#     STATUS_STORAGE_TOPIC: debezium-status
+#   ports:
+#     - "8083:8083"
+#   depends_on:
+#     - kafka
+#   networks:
+#     - elk-network
+
+# schema-registry:
+#   image: confluentinc/cp-schema-registry:7.4.0
+#   container_name: algoreport-schema-registry
+#   environment:
+#     SCHEMA_REGISTRY_HOST_NAME: schema-registry
+#     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+#     SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+#   ports:
+#     - "8081:8081"
+#   depends_on:
+#     - kafka
+#   networks:
+#     - elk-network

@@ -1,0 +1,127 @@
+{
+  "index_patterns": ["algoreport-logs-*"],
+  "version": 1,
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.refresh_interval": "30s",
+      "index.codec": "best_compression",
+      "index.mapping.total_fields.limit": 2000,
+      "index.max_result_window": 50000,
+      "analysis": {
+        "analyzer": {
+          "log_analyzer": {
+            "type": "custom",
+            "tokenizer": "standard",
+            "filter": ["lowercase", "stop"]
+          }
+        }
+      },
+      "lifecycle": {
+        "name": "algoreport-logs-policy",
+        "rollover_alias": "algoreport-logs"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "date_time||date_time_no_millis||epoch_millis"
+        },
+        "timestamp": {
+          "type": "date",
+          "format": "yyyy-MM-dd HH:mm:ss.SSS||yyyy-MM-dd HH:mm:ss,SSS"
+        },
+        "level": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "log_analyzer"
+            }
+          }
+        },
+        "severity": {
+          "type": "keyword"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "thread": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "log_analyzer"
+            }
+          }
+        },
+        "class": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "log_analyzer"
+            }
+          }
+        },
+        "log_message": {
+          "type": "text",
+          "analyzer": "log_analyzer",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 1024
+            }
+          }
+        },
+        "exception_class": {
+          "type": "keyword"
+        },
+        "exception_message": {
+          "type": "text",
+          "analyzer": "log_analyzer"
+        },
+        "http_method": {
+          "type": "keyword"
+        },
+        "request_uri": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "log_analyzer"
+            }
+          }
+        },
+        "application": {
+          "type": "keyword"
+        },
+        "environment": {
+          "type": "keyword"
+        },
+        "version": {
+          "type": "keyword"
+        },
+        "host_ip": {
+          "type": "ip"
+        },
+        "path": {
+          "type": "keyword",
+          "index": false
+        },
+        "type": {
+          "type": "keyword"
+        },
+        "tags": {
+          "type": "keyword"
+        }
+      }
+    },
+    "aliases": {
+      "algoreport-logs": {}
+    }
+  }
+}

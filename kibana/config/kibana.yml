@@ -1,0 +1,81 @@
+# Kibana 설정 - 알고리포트 로그 대시보드
+# Phase 1: Spring Boot 애플리케이션 로그 시각화
+
+# 서버 설정
+server.host: 0.0.0.0
+server.port: 5601
+server.name: algoreport-kibana
+server.maxPayload: 10485760
+
+# Elasticsearch 연결
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+elasticsearch.username: ""
+elasticsearch.password: ""
+elasticsearch.requestTimeout: 30000
+elasticsearch.shardTimeout: 30000
+
+# 로깅 설정
+logging.appenders.file.type: file
+logging.appenders.file.fileName: /usr/share/kibana/logs/kibana.log
+logging.appenders.file.layout.type: json
+
+logging.loggers:
+  - name: http.server.response
+    level: warn
+  - name: metrics.ops
+    level: warn
+
+logging.root.level: info
+
+# 보안 설정 (개발환경용 - 비활성화)
+xpack.security.enabled: false
+xpack.encryptedSavedObjects.encryptionKey: "algoreport-kibana-encryption-key-32-chars"
+
+# 모니터링 설정
+xpack.monitoring.enabled: false
+xpack.monitoring.kibana.collection.enabled: false
+
+# 기본 인덱스 패턴 설정
+kibana.defaultAppId: "discover"
+
+# UI 설정
+kibana.index: ".kibana"
+server.rewriteBasePath: false
+
+# 캐시 설정
+elasticsearch.requestHeadersWhitelist: [ "authorization" ]
+
+# CSV 내보내기 설정
+xpack.reporting.csv.maxSizeBytes: 52428800  # 50MB
+
+# 대시보드 자동 생성을 위한 설정
+xpack.spaces.enabled: false
+
+# Phase 1 전용 인덱스 패턴 (자동 생성)
+# 이 설정들은 초기 실행 시 자동으로 적용됩니다.
+
+# 개발 편의를 위한 설정
+server.cors.enabled: true
+server.cors.allowOrigin: ["http://localhost:3000", "http://localhost:8080"]
+
+# 성능 최적화
+elasticsearch.pingTimeout: 30000
+elasticsearch.requestTimeout: 90000
+
+# Phase 2 확장을 위한 설정 (현재 주석 처리)
+# 향후 비즈니스 대시보드 추가 시 활성화
+
+# # 스페이스 관리 (멀티 테넌트)
+# xpack.spaces.enabled: true
+# xpack.spaces.maxSpaces: 10
+
+# # 고급 시각화 기능
+# xpack.canvas.enabled: true
+# xpack.lens.enabled: true
+
+# # 머신러닝 기능 (로그 이상 탐지)
+# xpack.ml.enabled: false
+
+# # 알림 기능
+# xpack.actions.enabled: false
+# xpack.alerts.enabled: false

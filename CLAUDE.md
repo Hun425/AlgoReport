@@ -144,7 +144,9 @@ class UserServiceTest(
 - **Message Queue**: Kafka + Kafka Connect
 - **CDC (Change Data Capture)**: Debezium + PostgreSQL WAL
 - **Cache**: Redis
-- **Search & Analysis Engine**: Elasticsearch, Kibana
+- **Log Management**: ELK Stack (Elasticsearch + Logstash + Kibana)
+  - **Phase 1**: Spring Boot 애플리케이션 로그 관리
+  - **Phase 2**: solved.ac 비즈니스 데이터 분석 (향후 확장)
 - **Authentication**: Google OAuth2 + JWT
 - **Testing**: Kotest (BehaviorSpec), MockK, Spring Boot Test
 
@@ -261,6 +263,43 @@ graph LR
 - **실시간 발행**: INSERT 즉시 Kafka 발행 (폴링 지연 제거)
 - **DB 부하 제거**: 초당 0.2회 폴링 쿼리 완전 제거  
 - **확장성**: 이벤트 양 증가와 무관하게 일정한 성능
+
+## 📊 **로그 관리 시스템 (ELK Stack)**
+
+### **Phase 1: 애플리케이션 로그 관리** (현재)
+
+**목적**: Spring Boot 애플리케이션의 로그 수집, 검색, 모니터링
+
+**구성 요소**:
+- **Elasticsearch**: 로그 데이터 저장 및 빠른 검색
+- **Logstash**: 로그 파일 수집, 파싱, 변환
+- **Kibana**: 로그 시각화 및 대시보드
+
+**로그 처리 흐름**:
+```
+Spring Boot App → 로그 파일 → Logstash → Elasticsearch → Kibana
+```
+
+**주요 기능**:
+- 애플리케이션 에러 로그 추적
+- 성능 병목 지점 분석
+- 사용자 요청 패턴 모니터링
+- 시스템 장애 빠른 감지
+
+### **Phase 2: 비즈니스 데이터 분석** (향후 확장)
+
+**목적**: solved.ac 데이터 분석 및 비즈니스 인텔리전스
+
+**추가 구성 요소**:
+- **Kafka**: solved.ac 데이터 스트리밍
+- **Debezium**: CDC 기반 실시간 데이터 수집
+- **Schema Registry**: SAGA 이벤트 스키마 관리
+
+**확장된 데이터 흐름**:
+```
+solved.ac API → Kafka → Logstash → Elasticsearch → Kibana
+SAGA Events → Outbox → Debezium → Kafka → Elasticsearch
+```
 
 ## 📡 **API 구조 및 명명 규칙**
 

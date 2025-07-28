@@ -52,12 +52,17 @@ graph TD
     subgraph "데이터 저장소 (Data Stores)"
         PostgreSQL[("RDBMS<br>(PostgreSQL)<br><i>마스터 데이터</i>")]
         Redis[("인메모리 캐시<br>(Redis)<br><i>실시간 데이터</i>")]
-        Elasticsearch[("검색/분석 엔진<br>(Elasticsearch)<br><i>시계열 데이터</i>")]
+        Elasticsearch[("검색/분석 엔진<br>(Elasticsearch)<br><i>Phase1: 로그 저장<br>Phase2: 비즈니스 데이터</i>")]
         H2[("H2 Database<br><i>테스트용</i>")]
     end
 
+    subgraph "로그 관리 시스템 (Logging System - Phase 1)"
+        ELKStack["ELK Stack<br>(Elasticsearch + Logstash + Kibana)<br><i>Spring Boot 로그 관리</i>"]
+        Logstash["Logstash<br><i>로그 수집 및 파싱</i>"]
+    end
+
     subgraph "모니터링/관리 (Monitoring/Admin)"
-        Kibana["데이터 시각화<br>(Kibana)"]
+        Kibana["로그 시각화<br>(Kibana)<br><i>Phase1: 애플리케이션 로그<br>Phase2: 비즈니스 대시보드</i>"]
         SpringActuator["애플리케이션 모니터링<br>(Spring Actuator)"]
     end
 
@@ -83,16 +88,20 @@ graph TD
     %% 데이터 저장 (Data Storage)
     BackendServer -- "핵심 비즈니스 데이터" --> PostgreSQL
     BackendServer -- "실시간 랭킹/캐시" --> Redis
-    AnalysisService -- "분석 결과 저장" --> Elasticsearch
+    AnalysisService -- "Phase2: 분석 결과 저장" --> Elasticsearch
     AnalysisService -- "실시간 통계 캐싱" --> Redis
     AnalysisService -- "메타데이터 저장" --> PostgreSQL
     MonitoringService -- "알림 이벤트 발행" --> Kafka
+    
+    %% 로그 관리 (Phase 1)
+    BackendServer -- "애플리케이션 로그" --> Logstash
+    Logstash -- "로그 파싱 및 전송" --> Elasticsearch
     
     %% 개발/테스트 환경
     BackendServer -.- H2
     
     %% 모니터링 (Monitoring)
-    Kibana -- "데이터 조회/시각화" --> Elasticsearch
+    Kibana -- "Phase1: 로그 조회<br>Phase2: 비즈니스 시각화" --> Elasticsearch
     SpringActuator -- "헬스체크/메트릭" --> BackendServer
 
     %% 스타일링
@@ -344,12 +353,18 @@ com.algoreport.monitoring/
   ```
 
 #### **4.3 Elasticsearch**
-- **용도**: 대규모 시계열 데이터 저장 및 복잡한 집계/검색 쿼리
+- **Phase 1 용도**: Spring Boot 애플리케이션 로그 저장 및 검색
+- **Phase 2 용도**: 대규모 시계열 데이터 저장 및 복잡한 집계/검색 쿼리
 - **인덱스 구조**:
   ```
+  # Phase 1: 로그 관리
+  algoreport-logs-{YYYY.MM.dd}  # 일별 애플리케이션 로그
+  
+  # Phase 2: 비즈니스 데이터 (향후 확장)
   submissions-{YYYY.MM}         # 월별 파티셔닝된 제출 데이터
   problem-metadata             # 문제 메타데이터 및 태그 검색
   user-activities-{YYYY.MM}    # 사용자 활동 로그 (분석용)
+  saga-events-{YYYY.MM}        # SAGA 이벤트 추적
   ```
 
 #### **4.4 H2 Database**
@@ -361,11 +376,11 @@ com.algoreport.monitoring/
 ### **5. 모니터링 및 관리**
 
 #### **5.1 Kibana**
-- **용도**: Elasticsearch 데이터 시각화 및 운영 모니터링
+- **Phase 1 용도**: 애플리케이션 로그 시각화 및 운영 모니터링
+- **Phase 2 용도**: 비즈니스 데이터 시각화 및 분석 대시보드
 - **주요 대시보드**:
-  - 실시간 제출 현황 모니터링
-  - 사용자 활동 패턴 분석
-  - 시스템 성능 지표 (응답시간, 처리량)
+  - **Phase 1**: 애플리케이션 로그 검색, 에러 추적, 성능 모니터링
+  - **Phase 2**: 실시간 제출 현황, 사용자 활동 패턴, SAGA 실행 현황
 
 #### **5.2 Spring Actuator**
 - **용도**: 애플리케이션 상태 모니터링 및 메트릭 수집
@@ -477,11 +492,18 @@ fun processSubmissionAsync(submissionData: SubmissionData) {
 
 ## 📈 **확장성 로드맵**
 
-### **Phase 1: 모듈형 모놀리스** (현재)
+### **Phase 1: 모듈형 모놀리스 + 로그 관리** (현재)
 - 단일 애플리케이션 내 논리적 모듈 분리
+- **ELK Stack 도입**: Spring Boot 로그 관리 및 모니터링
 - 빠른 개발 및 배포 가능
 
-### **Phase 2: 마이크로서비스 분리** (향후)
+### **Phase 2: 비즈니스 데이터 분석 확장**
+- **ELK Stack 확장**: solved.ac 데이터 분석용 파이프라인 추가
+- **Kafka + Debezium**: CDC 기반 실시간 데이터 스트리밍
+- **Schema Registry**: SAGA 이벤트 스키마 관리
+- 비즈니스 인텔리전스 및 추천 시스템 고도화
+
+### **Phase 3: 마이크로서비스 분리** (향후)
 ```mermaid
 graph LR
     subgraph "마이크로서비스 아키텍처"

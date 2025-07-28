@@ -1,0 +1,158 @@
+{
+  "index_patterns": ["algoreport-errors-*"],
+  "version": 1,
+  "priority": 150,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.refresh_interval": "5s",
+      "index.codec": "best_compression",
+      "index.mapping.total_fields.limit": 2500,
+      "index.max_result_window": 10000,
+      "analysis": {
+        "analyzer": {
+          "error_analyzer": {
+            "type": "custom",
+            "tokenizer": "keyword",
+            "filter": ["lowercase"]
+          },
+          "stack_trace_analyzer": {
+            "type": "custom",
+            "tokenizer": "standard",
+            "filter": ["lowercase", "stop"]
+          }
+        }
+      },
+      "lifecycle": {
+        "name": "algoreport-errors-policy",
+        "rollover_alias": "algoreport-errors"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "date_time||date_time_no_millis||epoch_millis"
+        },
+        "timestamp": {
+          "type": "date",
+          "format": "yyyy-MM-dd HH:mm:ss.SSS||yyyy-MM-dd HH:mm:ss,SSS"
+        },
+        "level": {
+          "type": "keyword",
+          "value": "ERROR"
+        },
+        "severity": {
+          "type": "keyword",
+          "value": "high"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "thread": {
+          "type": "keyword"
+        },
+        "class": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "error_analyzer"
+            }
+          }
+        },
+        "log_message": {
+          "type": "text",
+          "analyzer": "stack_trace_analyzer",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 2048
+            }
+          }
+        },
+        "exception_class": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "error_analyzer"
+            }
+          }
+        },
+        "exception_message": {
+          "type": "text",
+          "analyzer": "stack_trace_analyzer",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 1024
+            }
+          }
+        },
+        "stack_trace": {
+          "type": "text",
+          "analyzer": "stack_trace_analyzer",
+          "index": true
+        },
+        "http_method": {
+          "type": "keyword"
+        },
+        "request_uri": {
+          "type": "keyword"
+        },
+        "user_id": {
+          "type": "keyword"
+        },
+        "session_id": {
+          "type": "keyword"
+        },
+        "correlation_id": {
+          "type": "keyword"
+        },
+        "saga_id": {
+          "type": "keyword"
+        },
+        "application": {
+          "type": "keyword"
+        },
+        "environment": {
+          "type": "keyword"
+        },
+        "version": {
+          "type": "keyword"
+        },
+        "host_ip": {
+          "type": "ip"
+        },
+        "error_count": {
+          "type": "integer",
+          "value": 1
+        },
+        "is_resolved": {
+          "type": "boolean",
+          "value": false
+        },
+        "resolution_notes": {
+          "type": "text",
+          "analyzer": "standard"
+        },
+        "tags": {
+          "type": "keyword"
+        },
+        "alert_sent": {
+          "type": "boolean",
+          "value": false
+        },
+        "impact_level": {
+          "type": "keyword",
+          "value": "unknown"
+        }
+      }
+    },
+    "aliases": {
+      "algoreport-errors": {}
+    }
+  }
+}

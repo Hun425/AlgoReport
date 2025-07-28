@@ -1,0 +1,84 @@
+# Elasticsearch 설정 - 알고리포트 로그 관리용
+# Phase 1: Spring Boot 애플리케이션 로그 최적화
+
+# 클러스터 설정
+cluster.name: algoreport-logs
+node.name: algoreport-elasticsearch-node1
+node.roles: [ master, data, ingest ]
+
+# 네트워크 설정
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# 디스커버리 설정 (단일 노드)
+discovery.type: single-node
+cluster.initial_master_nodes: ["algoreport-elasticsearch-node1"]
+
+# 경로 설정
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# 메모리 및 성능 설정
+bootstrap.memory_lock: true
+indices.memory.index_buffer_size: 20%
+indices.memory.min_index_buffer_size: 48mb
+
+# 로그 관리 최적화 설정
+indices.lifecycle.rollover.check_interval: 30m
+
+# 보안 설정 (개발환경용 - 비활성화)
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# 모니터링 설정
+xpack.monitoring.collection.enabled: false
+
+# 로그 레벨 설정
+logger.org.elasticsearch.discovery: WARN
+logger.org.elasticsearch.cluster.service: WARN
+logger.org.elasticsearch.http: INFO
+logger.org.elasticsearch.indices: INFO
+
+# 인덱스 기본 설정
+index.refresh_interval: 30s
+index.number_of_shards: 1
+index.number_of_replicas: 0
+index.max_result_window: 50000
+
+# 로그 데이터 특화 설정
+index.codec: best_compression
+index.merge.policy.max_merged_segment: 2gb
+
+# GC 설정 (힙 메모리 관리)
+indices.breaker.total.use_real_memory: true
+indices.breaker.fielddata.limit: 30%
+indices.breaker.request.limit: 40%
+
+# 검색 성능 최적화
+search.max_buckets: 65536
+search.default_search_timeout: 30s
+
+# 클러스터 상태 설정
+cluster.routing.allocation.disk.threshold_enabled: true
+cluster.routing.allocation.disk.watermark.low: 85%
+cluster.routing.allocation.disk.watermark.high: 90%
+cluster.routing.allocation.disk.watermark.flood_stage: 95%
+
+# Phase 2 확장을 위한 설정 (현재 주석 처리)
+# 향후 비즈니스 데이터 분석 기능 추가 시 활성화
+
+# # 크로스 클러스터 검색 (멀티 클러스터)
+# cluster.remote.connect: false
+
+# # 인덱스 템플릿 자동 생성 
+# action.auto_create_index: "+algoreport-*,-*"
+
+# # 스냅샷 설정
+# path.repo: ["/usr/share/elasticsearch/backups"]
+
+# # 대용량 처리를 위한 설정
+# thread_pool.write.queue_size: 1000
+# thread_pool.search.queue_size: 2000
