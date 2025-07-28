@@ -45,3 +45,30 @@ logging:
   level:
     com.algoreport: DEBUG
     org.springframework.security: DEBUG
+
+# SpringDoc OpenAPI 3 설정
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+    display-operation-id: true
+  show-actuator: true
+  group-configs:
+    - group: 'User Module'
+      paths-to-match: '/api/v1/users/**'
+      display-name: '👤 사용자 관리'
+    - group: 'Study Group Module'  
+      paths-to-match: '/api/v1/studygroups/**'
+      display-name: '👥 스터디 그룹'
+    - group: 'Analysis Module'
+      paths-to-match: '/api/v1/analysis/**'
+      display-name: '📊 분석 & 추천'
+    - group: 'Notification Module'
+      paths-to-match: '/api/v1/notifications/**'
+      display-name: '🔔 알림'
