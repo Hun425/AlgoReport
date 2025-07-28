@@ -271,8 +271,35 @@
 - **현재 상태**: USER_REGISTRATION_SAGA + Google OAuth2 완료
 - **다음 작업**: SOLVEDAC_LINK_SAGA 구현
 
+### **Task 2-2: SOLVEDAC_LINK_SAGA 구현** (진행중: 2025-07-28)
+
+#### **2-2-1: [RED] solved.ac 계정 연동 테스트 작성** ✅ **완료**
+- **완료 내용**:
+  - **SolvedacLinkSagaTest**: 6개 시나리오 테스트 완료 (정상 연동, 실패 시나리오, 중복 핸들, 보상 트랜잭션)
+  - **데이터 클래스 확장**: User 모델에 solvedacHandle, solvedacTier, solvedacSolvedCount 필드 추가
+  - **SolvedacLinkSaga 빈 구현체**: 올바른 RED 단계를 위한 가짜 구현 (테스트 실패 유도)
+  - **TDD 방법론 개선**: RED 단계 올바른 방법론을 TDD_GUIDE.md에 문서화
+
+- **개발환경 개선**:
+  - **SpringDoc OpenAPI 3 도입**: Swagger UI 설정, 모듈별 API 그룹화
+  - **TODO 주석 컨벤션**: TDD 단계별 TODO 관리 시스템 구축
+
+- **커밋 내역**:
+  - `test: Red - SOLVEDAC_LINK_SAGA 테스트 작성` (e42f48e)
+  - `test: Red - SolvedacLinkSaga 빈 구현체 추가 (컴파일 성공)` (8077e62)
+  - `test: Red - 올바른 테스트 실패 구현 (예외 대신 잘못된 값 반환)` (8c84789)
+  - `feat: SpringDoc OpenAPI 3 도입` (bd54f97)
+  - `docs: TDD_GUIDE.md에 올바른 RED 단계 방법론 추가` (9df4a03)
+  - `docs: TODO 주석 컨벤션을 TDD_GUIDE.md와 CODING_STANDARDS.md에 추가` (47dd2f6)
+
+## 📈 **Phase 2 진행률**
+
+- **전체 진행률**: 66% (Task 2-1 완료, Task 2-2-1 완료, Task 2-2-2~3 대기)
+- **현재 상태**: USER_REGISTRATION_SAGA + Google OAuth2 + SOLVEDAC_LINK_SAGA 테스트 완료
+- **다음 작업**: SOLVEDAC_LINK_SAGA GREEN 단계 구현
+
 ## 🎯 **다음 우선순위**
 
-1. **Task 2-2-1**: [RED] solved.ac 계정 연동 테스트 작성 🚀 **다음 작업**
-2. **Task 2-2-2**: [GREEN] SOLVEDAC_LINK_SAGA 구현
-3. **Task 2-2-3**: [REFACTOR] 복잡한 보상 로직 구현
+1. **Task 2-2-2**: [GREEN] SOLVEDAC_LINK_SAGA 구현 🚀 **다음 작업**
+2. **Task 2-2-3**: [REFACTOR] 복잡한 보상 로직 구현
+3. **Task 2-3**: CREATE_GROUP_SAGA 구현
