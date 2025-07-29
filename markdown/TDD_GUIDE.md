@@ -145,21 +145,27 @@ class SolvedacLinkSaga {
 ```
 **문제**: 예외로 테스트 중단, assertion 도달 불가 ❌
 
-### **✅ 올바른 RED 단계 방법**
+### **✅ 올바른 RED 단계 방법 (정통 TDD 방법론)**
 
-#### **방법 3: 가짜 구현체 → Assertion 실패**
+#### **방법 3: "Fake It" 전략 → 가장 간단한 가짜 값 반환**
 ```kotlin
 class SolvedacLinkSaga {
     fun start(request: SolvedacLinkRequest): SolvedacLinkResult {
-        // 의도적으로 잘못된 값 반환 (테스트 실패하도록)
+        // RED 단계: 컴파일 오류만 해결, 가장 간단한 가짜 값 반환
         return SolvedacLinkResult(
-            sagaStatus = SagaStatus.FAILED,  // 테스트는 COMPLETED 기대
-            linkedHandle = null,             // 테스트는 실제 handle 기대
-            errorMessage = "Not implemented"
+            sagaStatus = SagaStatus.PENDING,  // 기본값 (모든 테스트 실패)
+            linkedHandle = null,              // 기본값 (모든 테스트 실패)
+            errorMessage = null               // 기본값 (모든 테스트 실패)
         )
     }
 }
 ```
+
+#### **정통 TDD "Fake It" 전략의 원칙**
+- ✅ **컴파일 오류만 해결**: 메서드 시그니처만 맞춤
+- ✅ **가장 간단한 값**: `null`, `0`, `false`, 기본 생성자 등
+- ✅ **모든 테스트 실패**: 실제 로직 없이 기본값만 반환
+- ✅ **Kent Beck의 원칙**: "Make it work, then make it right, then make it fast"
 
 ### **🎯 올바른 RED 단계 조건**
 1. **✅ 컴파일 성공** - 모든 클래스와 메서드 존재
