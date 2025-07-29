@@ -35,25 +35,22 @@ class SolvedacLinkSagaTest(
     override fun extensions() = listOf(SpringExtension)
     
     init {
-        beforeEach {
-            // 각 테스트 전에 상태 초기화
-            userService.clear()
-        }
-        
         given("SOLVEDAC_LINK_SAGA가 실행될 때") {
-            val userId = "test-user-123"
             val solvedacHandle = "test_handle"
             val validUserEmail = "test@example.com"
+            lateinit var userId: String  // 실제 생성된 사용자 ID를 저장
             
-            // 테스트용 사용자 생성
-            beforeContainer {
-                userService.createUser(
+            // 각 테스트 전에 상태 초기화 및 사용자 생성
+            beforeEach {
+                userService.clear()
+                val createdUser = userService.createUser(
                     UserCreateRequest(
                         email = validUserEmail,
                         nickname = "테스트사용자",
                         provider = AuthProvider.GOOGLE
                     )
                 )
+                userId = createdUser.id  // 실제 생성된 ID 사용
             }
             
             `when`("유효한 solved.ac 핸들이 제공되면") {
@@ -121,11 +118,10 @@ class SolvedacLinkSagaTest(
             
             `when`("이미 다른 사용자가 연동한 핸들이 제공되면") {
                 val duplicateHandle = "already_linked_handle"
-                val anotherUserId = "another-user-456"
                 
                 then("중복 연동 오류가 발생해야 한다") {
                     // 다른 사용자 생성 및 핸들 연동
-                    userService.createUser(
+                    val anotherUser = userService.createUser(
                         UserCreateRequest(
                             email = "another@example.com",
                             nickname = "다른사용자",
@@ -135,7 +131,7 @@ class SolvedacLinkSagaTest(
                     
                     // 첫 번째 사용자가 핸들 연동 성공
                     val firstRequest = SolvedacLinkRequest(
-                        userId = anotherUserId,
+                        userId = anotherUser.id,  // 실제 생성된 ID 사용
                         solvedacHandle = duplicateHandle
                     )
                     val firstResult = solvedacLinkSaga.start(firstRequest)
@@ -155,8 +151,11 @@ class SolvedacLinkSagaTest(
         }
         
         given("SOLVEDAC_LINK_SAGA에서 중간 단계가 실패할 때") {
-            val userId = "test-user-789"
             val solvedacHandle = "test_handle_failure"
+            
+            beforeEach {
+                userService.clear()
+            }
             
             `when`("사용자 프로필 업데이트가 실패하면") {
                 then("보상 트랜잭션이 실행되어 원래 상태로 롤백되어야 한다") {
@@ -177,13 +176,26 @@ class SolvedacLinkSagaTest(
         }
         
         given("SOLVEDAC_LINK_SAGA의 이벤트 발행을 확인할 때") {
-            val userId = "event-test-user"
             val solvedacHandle = "event_test_handle"
+            val eventUserEmail = "event@example.com"
+            lateinit var eventUserId: String
+            
+            beforeEach {
+                userService.clear()
+                val eventTestUser = userService.createUser(
+                    UserCreateRequest(
+                        email = eventUserEmail,
+                        nickname = "이벤트테스트사용자",
+                        provider = AuthProvider.GOOGLE
+                    )
+                )
+                eventUserId = eventTestUser.id
+            }
             
             `when`("연동이 성공하면") {
                 then("적절한 이벤트가 발행되어야 한다") {
                     val request = SolvedacLinkRequest(
-                        userId = userId,
+                        userId = eventUserId,  // 실제 생성된 ID 사용
                         solvedacHandle = solvedacHandle
                     )
                     
