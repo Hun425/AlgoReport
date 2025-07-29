@@ -31,6 +31,7 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     ALREADY_JOINED_STUDY(HttpStatus.CONFLICT, "E40902", "이미 참여한 스터디 그룹입니다."),
     SOLVEDAC_ALREADY_LINKED(HttpStatus.CONFLICT, "E40903", "이미 연동된 solved.ac 계정입니다."),
     ALREADY_LINKED_SOLVEDAC_HANDLE(HttpStatus.CONFLICT, "E40904", "이미 다른 사용자가 연동한 핸들입니다."),
+    DUPLICATE_GROUP_NAME(HttpStatus.CONFLICT, "E40905", "이미 존재하는 스터디 그룹명입니다."),
     
     // 500 INTERNAL_SERVER_ERROR
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50001", "서버 내부 오류가 발생했습니다."),
@@ -38,6 +39,8 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50003", "데이터베이스 처리 중 오류가 발생했습니다."),
     USER_UPDATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50004", "사용자 정보 업데이트에 실패했습니다."),
     EVENT_PUBLISH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50005", "이벤트 발행에 실패했습니다."),
+    GROUP_CREATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50006", "스터디 그룹 생성에 실패했습니다."),
+    GROUP_MEMBER_ADD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50007", "스터디 그룹 멤버 추가에 실패했습니다."),
     
     // 429 TOO_MANY_REQUESTS
     SOLVEDAC_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "E42901", "solved.ac API 호출 제한에 도달했습니다. 잠시 후 다시 시도해주세요."),
