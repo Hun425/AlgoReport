@@ -30,11 +30,11 @@ class CreateGroupSaga(
     
     fun start(request: CreateGroupRequest): CreateGroupResult {
         // TODO: [GREEN] 실제 SAGA 로직 구현
-        // 현재는 RED 단계를 위한 가짜 구현 (테스트 실패 유도)
+        // RED 단계: 컴파일 오류만 해결, 가장 간단한 가짜 값 반환 (정통 TDD "Fake It")
         return CreateGroupResult(
-            sagaStatus = SagaStatus.FAILED,  // 테스트는 COMPLETED 기대
-            groupId = null,                  // 테스트는 실제 groupId 기대
-            errorMessage = "Not implemented" // 테스트는 null 기대
+            sagaStatus = SagaStatus.PENDING,  // 기본값 (모든 테스트 실패)
+            groupId = null,                   // 기본값 (모든 테스트 실패)  
+            errorMessage = null               // 기본값 (모든 테스트 실패)
         )
     }
 }
