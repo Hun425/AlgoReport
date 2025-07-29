@@ -329,8 +329,55 @@
 - **완료 일자**: 2025-07-29
 - **다음 단계**: Phase 3 (스터디 그룹 관리) 진행
 
+---
+
+## ✅ **Phase 3: 스터디 그룹 관리** (진행중 🚀)
+
+### **Task 3-1: CREATE_GROUP_SAGA 구현** (진행중: 2025-07-29)
+
+#### **3-1-1: [RED] 그룹 생성 SAGA 테스트 작성** ✅ **완료** (2025-07-29)
+- **완료 내용**:
+  - **CreateGroupSagaTest**: 6개 시나리오 테스트 완료 (정상 생성, 사용자 검증, 중복 그룹명, 보상 트랜잭션)
+  - **StudyGroupService 기본 인터페이스**: 그룹 생성, 조회, 중복 체크 메서드 정의
+  - **CreateGroupSaga 빈 구현체**: RED 단계를 위한 기본 실패 반환 (SagaStatus.PENDING)
+  - **데이터 클래스**: CreateGroupRequest, CreateGroupResult, StudyGroup 모델 정의
+
+- **TDD 방법론 개선**:
+  - **정통 TDD "Fake It" 방식**: 가장 간단한 가짜 값 반환으로 모든 테스트 실패 유도
+  - **하드코딩된 ID 문제 해결**: UUID 기반 동적 사용자 생성으로 테스트 신뢰성 향상
+
+#### **지원 인프라 개선** ✅ **완료** (2025-07-29)
+- **TestConfiguration 대폭 개선**:
+  - **SolvedacApiClient**: Mockito mock → 실제 데이터 반환하는 stub으로 변경
+  - **OutboxService Mock**: UUID 반환하도록 설정하여 이벤트 발행 시뮬레이션
+  - **예외 처리 로직**: 존재하지 않는 핸들에 대해 RuntimeException 발생
+  
+- **SolvedacLinkSagaTest 완전 수정**:
+  - **사용자 ID 불일치 문제**: 하드코딩된 userId → 실제 생성된 UUID 사용
+  - **Kotest 실행 순서 문제**: beforeContainer/beforeEach 순서로 인한 사용자 삭제 문제 해결
+  - **모든 테스트 통과**: 6개 테스트 시나리오 완전 통과 확인
+
+#### **3-1-2: [GREEN] 4단계 SAGA 구현** 🚀 **진행중**
+- **현재 상태**: 다음 작업으로 진행 예정
+- **구현 예정 내용**:
+  - **Step 1**: validateUserExists() - 사용자 존재 여부 확인
+  - **Step 2**: validateGroupNameNotDuplicated() - 중복 그룹명 체크
+  - **Step 3**: createStudyGroup() - 스터디 그룹 생성
+  - **Step 4**: addGroupMember() - 그룹장을 첫 번째 멤버로 추가
+  - **보상 트랜잭션**: 실패 시 생성된 그룹 및 멤버 데이터 롤백
+
+- **커밋 내역**:
+  - `test: Red - CREATE_GROUP_SAGA 테스트 작성` (f548907)
+  - `fix: SolvedacLinkSagaTest 모든 테스트 통과 - TestConfiguration 및 테스트 구조 수정` (b058ec7)
+
+## 📈 **Phase 3 진행률**
+
+- **전체 진행률**: 10% (Task 3-1-1 완료, Task 3-1-2 진행중)
+- **현재 상태**: CREATE_GROUP_SAGA RED 단계 완료, GREEN 단계 진행 예정
+- **다음 작업**: CREATE_GROUP_SAGA [GREEN] 단계 구현
+
 ## 🎯 **다음 우선순위** (Phase 3)
 
-1. **CREATE_GROUP_SAGA 구현**: 스터디 그룹 생성 기능 🚀 **다음 작업**
-2. **JOIN_GROUP_SAGA 구현**: 스터디 그룹 참여 기능 (복잡한 보상 로직)
-3. **USER_PROFILE_UPDATE_SAGA 구현**: 사용자 프로필 수정 기능
+1. **CREATE_GROUP_SAGA [GREEN] 단계 구현**: 4단계 SAGA 구현 🚀 **다음 작업**
+2. **CREATE_GROUP_SAGA [REFACTOR] 단계**: 그룹 관리 최적화
+3. **JOIN_GROUP_SAGA 구현**: 스터디 그룹 참여 기능 (복잡한 보상 로직)
