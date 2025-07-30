@@ -357,27 +357,45 @@
   - **Kotest 실행 순서 문제**: beforeContainer/beforeEach 순서로 인한 사용자 삭제 문제 해결
   - **모든 테스트 통과**: 6개 테스트 시나리오 완전 통과 확인
 
-#### **3-1-2: [GREEN] 4단계 SAGA 구현** 🚀 **진행중**
-- **현재 상태**: 다음 작업으로 진행 예정
-- **구현 예정 내용**:
-  - **Step 1**: validateUserExists() - 사용자 존재 여부 확인
-  - **Step 2**: validateGroupNameNotDuplicated() - 중복 그룹명 체크
-  - **Step 3**: createStudyGroup() - 스터디 그룹 생성
-  - **Step 4**: addGroupMember() - 그룹장을 첫 번째 멤버로 추가
-  - **보상 트랜잭션**: 실패 시 생성된 그룹 및 멤버 데이터 롤백
+#### **3-1-2: [GREEN] 5단계 SAGA 구현** ✅ **완료** (2025-07-30)
+- **완료 내용**:
+  - **Step 1**: validateUser(ownerId) - 사용자 존재 여부 확인
+  - **Step 2**: validateGroupName(groupName) - 중복 그룹명 체크
+  - **Step 3**: createStudyGroup(request) - 스터디 그룹 생성
+  - **Step 4**: addOwnerAsMember(groupId, ownerId) - 그룹장을 첫 번째 멤버로 추가
+  - **Step 5**: publishGroupCreatedEvent(groupId, ownerId) - GROUP_CREATED 이벤트 발행 (추후 구현)
+  - **보상 트랜잭션**: executeCompensation() 구현으로 실패 시 생성된 그룹 완전 롤백
+
+- **StudyGroupService 강화**:
+  - **findByName(name)** 메서드 추가로 보상 트랜잭션 로직 개선
+  - 그룹명 기반 그룹 ID 조회 후 정확한 삭제 처리
+
+- **테스트 구조 개선**:
+  - **Kotest BehaviorSpec 데이터 생명주기 문제 해결**: 각 `then` 블록에서 독립적으로 사용자 생성
+  - **CreateGroupSagaTest 모든 테스트 통과**: 6개 테스트 시나리오 완전 성공
+  - **디버깅 로그 추가**: 실패 원인 파악을 위한 상세 로깅
+
+- **문서화 강화**:
+  - **TDD_GUIDE.md**: Kotest BehaviorSpec 데이터 생명주기 관리 가이드 추가
+  - **CODING_STANDARDS.md**: Kotest 실행 순서 및 함정 상세 설명 추가
 
 - **커밋 내역**:
-  - `test: Red - CREATE_GROUP_SAGA 테스트 작성` (f548907)
-  - `fix: SolvedacLinkSagaTest 모든 테스트 통과 - TestConfiguration 및 테스트 구조 수정` (b058ec7)
+  - `feat: Green - CREATE_GROUP_SAGA 완전 구현 완료` (f4be2e5)
+
+#### **3-1-3: [REFACTOR] 그룹 관리 최적화** 🚀 **다음 작업**
+- **예정 내용**:
+  - 코드 품질 개선 및 성능 최적화
+  - OutboxService를 통한 실제 GROUP_CREATED 이벤트 발행 구현
+  - 그룹 관리 로직 강화 및 예외 처리 개선
 
 ## 📈 **Phase 3 진행률**
 
-- **전체 진행률**: 10% (Task 3-1-1 완료, Task 3-1-2 진행중)
-- **현재 상태**: CREATE_GROUP_SAGA RED 단계 완료, GREEN 단계 진행 예정
-- **다음 작업**: CREATE_GROUP_SAGA [GREEN] 단계 구현
+- **전체 진행률**: 30% (Task 3-1-1, 3-1-2 완료, Task 3-1-3 진행 예정)
+- **현재 상태**: CREATE_GROUP_SAGA GREEN 단계 완료, REFACTOR 단계 진행 예정
+- **다음 작업**: CREATE_GROUP_SAGA [REFACTOR] 단계 구현
 
 ## 🎯 **다음 우선순위** (Phase 3)
 
-1. **CREATE_GROUP_SAGA [GREEN] 단계 구현**: 4단계 SAGA 구현 🚀 **다음 작업**
-2. **CREATE_GROUP_SAGA [REFACTOR] 단계**: 그룹 관리 최적화
-3. **JOIN_GROUP_SAGA 구현**: 스터디 그룹 참여 기능 (복잡한 보상 로직)
+1. **CREATE_GROUP_SAGA [REFACTOR] 단계 구현**: 코드 품질 개선 및 이벤트 발행 🚀 **다음 작업**
+2. **JOIN_GROUP_SAGA 구현**: 스터디 그룹 참여 기능 (복잡한 보상 로직)
+3. **USER_PROFILE_UPDATE_SAGA 구현**: 사용자 프로필 업데이트 기능
