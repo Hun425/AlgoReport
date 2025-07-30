@@ -104,7 +104,7 @@ class CreateGroupSaga(
     }
     
     private fun publishGroupCreatedEvent(groupId: String, ownerId: String) {
-        val eventData = mapOf(
+        val eventData = mapOf<String, Any>(
             "eventType" to "GROUP_CREATED",
             "groupId" to groupId,
             "ownerId" to ownerId,
@@ -112,6 +112,7 @@ class CreateGroupSaga(
         )
         
         outboxService.publishEvent(
+            aggregateType = "STUDY_GROUP",
             aggregateId = "group-$groupId",
             eventType = "GROUP_CREATED",
             eventData = eventData
@@ -160,15 +161,16 @@ class CreateGroupSaga(
      */
     private fun publishCompensationEvent(groupId: String?, ownerId: String, eventType: String) {
         try {
-            val eventData = mapOf(
+            val eventData = mapOf<String, Any>(
                 "eventType" to eventType,
-                "groupId" to groupId,
+                "groupId" to (groupId ?: ""),
                 "ownerId" to ownerId,
                 "timestamp" to System.currentTimeMillis(),
                 "compensationReason" to "CREATE_GROUP_SAGA_FAILURE"
             )
             
             outboxService.publishEvent(
+                aggregateType = "STUDY_GROUP_COMPENSATION",
                 aggregateId = "compensation-${System.currentTimeMillis()}",
                 eventType = eventType,
                 eventData = eventData
