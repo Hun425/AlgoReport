@@ -303,6 +303,68 @@ class SolvedacLinkSaga {
 - [ ] 다음 단계를 위한 TODO를 준비했는가?
 
 **🚨 중요: TODO 주석은 TDD 사이클 관리의 핵심 도구입니다. 반드시 활용하세요!**
+
+---
+
+## 📋 **Kotest BehaviorSpec 데이터 생명주기 관리 (필수 숙지)**
+
+### **🚨 자주 발생하는 테스트 오류 - 데이터 생명주기 실수**
+
+**문제 상황**: CreateGroupSagaTest에서 발생했던 "사용자를 찾을 수 없습니다" 오류
+
+**원인**: Kotest BehaviorSpec의 실행 순서를 잘못 이해하여 테스트 데이터가 삭제된 상태에서 테스트 실행
+
+```kotlin
+// ❌ 문제가 있었던 방식
+init {
+    beforeEach {
+        userService.clear() // 각 then 블록 실행 전마다 호출!
+    }
+    
+    given("CREATE_GROUP_SAGA가 실행될 때") {
+        val testUser = userService.createUser(...) // 여기서 사용자 생성
+        val ownerId = testUser.id
+        
+        then("테스트 1") {
+            // beforeEach에서 이미 사용자가 삭제됨!
+            val result = createGroupSaga.start(CreateGroupRequest(ownerId = ownerId, ...))
+            // 💥 IllegalArgumentException: 사용자를 찾을 수 없습니다
+        }
+    }
+}
+
+// ✅ 수정된 방식
+init {
+    beforeEach {
+        userService.clear()
+    }
+    
+    given("CREATE_GROUP_SAGA가 실행될 때") {
+        then("테스트 1") {
+            val testUser = userService.createUser(...) // then 블록 내에서 생성
+            val ownerId = testUser.id
+            
+            val result = createGroupSaga.start(CreateGroupRequest(ownerId = ownerId, ...))
+            // ✅ 정상 실행
+        }
+    }
+}
+```
+
+### **📋 Kotest 데이터 생명주기 체크리스트 (매번 확인 필수)**
+
+새로운 테스트 작성 시:
+- [ ] `beforeEach`가 어느 스코프에 있는지 확인
+- [ ] 테스트 데이터 생성 위치 확인 (`given` vs `then`)
+- [ ] 각 `then` 블록이 독립적으로 실행됨을 고려
+- [ ] 데이터 정리(`clear()`) 시점 확인
+
+테스트 실패 시 확인사항:
+- [ ] "찾을 수 없습니다" 류의 오류 → 데이터 생명주기 문제 의심
+- [ ] `beforeEach`에서 데이터가 삭제되고 있지 않은지 확인
+- [ ] 테스트 데이터가 적절한 스코프에서 생성되고 있는지 확인
+
+**🎯 교훈**: 구현 코드가 올바른데 테스트가 실패한다면, 테스트 코드의 구조적 문제를 먼저 의심하라!
     
 
 ## 2. 알고리포트 프로젝트 TDD 적용 규칙

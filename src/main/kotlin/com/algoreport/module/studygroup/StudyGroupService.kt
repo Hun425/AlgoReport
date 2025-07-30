@@ -41,6 +41,11 @@ class StudyGroupService {
         return studyGroups[groupId]
     }
     
+    fun findByName(name: String): StudyGroup? {
+        val groupId = nameIndex[name] ?: return null
+        return studyGroups[groupId]
+    }
+    
     fun addMember(groupId: String, userId: String): StudyGroup? {
         val group = studyGroups[groupId] ?: return null
         val updatedGroup = group.copy(memberCount = group.memberCount + 1)

@@ -6,6 +6,7 @@ plugins {
     kotlin("jvm") version "2.2.0"
     kotlin("plugin.spring") version "2.2.0"
     kotlin("plugin.jpa") version "2.2.0"
+    kotlin("kapt") version "2.2.0"
 }
 
 group = "com.algoreport"
@@ -35,6 +36,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    
+    // QueryDSL
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    kapt("jakarta.annotation:jakarta.annotation-api")
+    kapt("jakarta.persistence:jakarta.persistence-api")
     
     // Kafka
     implementation("org.springframework.kafka:spring-kafka")
@@ -89,4 +96,23 @@ tasks.withType<Test> {
     useJUnitPlatform()
     maxHeapSize = "2g"
     jvmArgs = listOf("-XX:MaxMetaspaceSize=512m")
+}
+
+// QueryDSL 설정
+sourceSets {
+    main {
+        java {
+            srcDirs("src/main/generated")
+        }
+    }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptGenerateStubsTask> {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
+tasks.clean {
+    delete("src/main/generated")
 }

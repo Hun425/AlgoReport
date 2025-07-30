@@ -29,13 +29,94 @@ class CreateGroupSaga(
     private val logger = LoggerFactory.getLogger(CreateGroupSaga::class.java)
     
     fun start(request: CreateGroupRequest): CreateGroupResult {
-        // TODO: [GREEN] 실제 SAGA 로직 구현
-        // RED 단계: 컴파일 오류만 해결, 가장 간단한 가짜 값 반환 (정통 TDD "Fake It")
-        return CreateGroupResult(
-            sagaStatus = SagaStatus.PENDING,  // 기본값 (모든 테스트 실패)
-            groupId = null,                   // 기본값 (모든 테스트 실패)  
-            errorMessage = null               // 기본값 (모든 테스트 실패)
-        )
+        logger.info("Starting CREATE_GROUP_SAGA for owner: {}, groupName: {}", request.ownerId, request.name)
+        
+        return try {
+            // Step 1: 사용자 검증
+            validateUser(request.ownerId)
+            
+            // Step 2: 그룹명 중복 체크
+            validateGroupName(request.name)
+            
+            // Step 3: 스터디 그룹 생성
+            val group = createStudyGroup(request)
+            
+            // Step 4: 그룹장을 멤버로 추가
+            addOwnerAsMember(group.id, request.ownerId)
+            
+            // Step 5: 이벤트 발행
+            publishGroupCreatedEvent(group.id, request.ownerId)
+            
+            logger.info("CREATE_GROUP_SAGA completed successfully for groupId: {}", group.id)
+            CreateGroupResult(
+                sagaStatus = SagaStatus.COMPLETED,
+                groupId = group.id,
+                errorMessage = null
+            )
+            
+        } catch (e: Exception) {
+            logger.error("CREATE_GROUP_SAGA failed for owner: {}, groupName: {}, error: {}", 
+                request.ownerId, request.name, e.message, e)
+            
+            // 보상 트랜잭션 실행 (생성된 데이터 롤백)
+            executeCompensation(request)
+            
+            CreateGroupResult(
+                sagaStatus = SagaStatus.FAILED,
+                groupId = null,
+                errorMessage = e.message ?: "Unknown error occurred"
+            )
+        }
+    }
+    
+    private fun validateUser(ownerId: String) {
+        val user = userService.findById(ownerId)
+        if (user == null) {
+            throw IllegalArgumentException("사용자를 찾을 수 없습니다: $ownerId")
+        }
+        logger.debug("User validation passed for ownerId: {}", ownerId)
+    }
+    
+    private fun validateGroupName(groupName: String) {
+        if (studyGroupService.existsByName(groupName)) {
+            throw IllegalArgumentException("이미 존재하는 그룹명입니다: $groupName")
+        }
+        logger.debug("Group name validation passed for name: {}", groupName)
+    }
+    
+    private fun createStudyGroup(request: CreateGroupRequest): StudyGroup {
+        val group = studyGroupService.createGroup(request)
+        logger.debug("Study group created with id: {}", group.id)
+        return group
+    }
+    
+    private fun addOwnerAsMember(groupId: String, ownerId: String) {
+        val updatedGroup = studyGroupService.addMember(groupId, ownerId)
+        if (updatedGroup == null) {
+            throw IllegalStateException("Failed to add owner as member to group: $groupId")
+        }
+        logger.debug("Owner added as member to group: {}", groupId)
+    }
+    
+    private fun publishGroupCreatedEvent(groupId: String, ownerId: String) {
+        // TODO: OutboxService를 통한 GROUP_CREATED 이벤트 발행 구현
+        logger.debug("GROUP_CREATED event published for group: {}, owner: {}", groupId, ownerId)
+    }
+    
+    private fun executeCompensation(request: CreateGroupRequest) {
+        try {
+            // 생성된 그룹이 있다면 삭제
+            if (studyGroupService.existsByName(request.name)) {
+                // 그룹명으로 그룹 ID를 찾아서 삭제
+                val groupId = studyGroupService.findByName(request.name)?.id
+                if (groupId != null) {
+                    studyGroupService.deleteGroup(groupId)
+                    logger.warn("Compensation: Rolled back group creation for name: {}, id: {}", request.name, groupId)
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("Compensation failed for group: {}, error: {}", request.name, e.message, e)
+        }
     }
 }
 

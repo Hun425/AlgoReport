@@ -10,22 +10,30 @@
 
 ## 🏗️ 기술 스택
 
+### **Backend**
 - **Language**: Kotlin 2.2.0
-- **JDK**: Java 24 (최신 성능 최적화 적용)
+- **JDK**: Java 21 LTS (장기 지원 + 안정성)
 - **Framework**: Spring Boot 3.5.3
+- **ORM**: Spring Data JPA + QueryDSL (타입 안전한 복잡 쿼리)
 - **Architecture**: 모듈형 모놀리스 + SAGA 패턴
 - **Database**: PostgreSQL (Production), H2 (Testing)
 - **Cache**: Redis
-- **Message Queue**: Apache Kafka
+- **Message Queue**: Apache Kafka + Debezium CDC
 - **Search Engine**: Elasticsearch + Kibana
 - **Authentication**: Google OAuth2 + JWT
+
+### **Frontend**
+- **Language**: TypeScript
+- **Framework**: React + Next.js
+- **Future Mobile**: React Native 또는 Flutter (추후 결정)
 
 ## 🚀 빠른 시작
 
 ### 1. 필수 요구사항
 
-- Java 24+
+- Java 21 LTS+
 - Docker & Docker Compose
+- Node.js 18+ (프론트엔드 개발 시)
 
 ### 2. 인프라 실행
 
@@ -88,7 +96,7 @@ src/main/kotlin/com/algoreport/
 
 ## 🎨 개발 환경
 
-- **IDE**: IntelliJ IDEA 2025.x (Java 24 최적화)
+- **IDE**: IntelliJ IDEA 2025.x (Java 21 LTS 최적화)
 - **Code Style**: Kotlin Official Style
 - **Git Hook**: Pre-commit 테스트 실행
 - **TDD**: Red-Green-Refactor 사이클 엄격 적용

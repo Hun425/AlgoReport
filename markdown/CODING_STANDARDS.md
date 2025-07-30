@@ -56,17 +56,125 @@ class StudyGroupService(
     - 예: `joinStudyGroup_whenAlreadyJoined_shouldThrowException()`
         
 
-### 2.3 테스트 구조 (Given-When-Then)
+### 2.3 Kotest BehaviorSpec 사용 규칙 (필수)
 
+**🚨 중요: 모든 테스트는 Kotest BehaviorSpec을 사용합니다** (JUnit 5 금지)
+
+#### **Kotest BehaviorSpec 실행 순서 및 데이터 생명주기 (필수 숙지)**
+
+**실행 순서:**
+1. `beforeEach` → 각 `then` 블록 실행 전마다 호출
+2. `given` 블록 → 테스트 컨텍스트 정의 (데이터 생성 위치 주의!)
+3. `when` 블록 → 테스트 시나리오 정의
+4. `then` 블록 → 실제 테스트 실행 및 검증 (독립적으로 실행)
+5. `afterEach` → 각 `then` 블록 실행 후마다 호출
+
+**⚠️ 자주 발생하는 함정들:**
+
+```kotlin
+// ❌ 잘못된 방식 - 데이터 생명주기 오류
+init {
+    beforeEach {
+        userService.clear() // 모든 then 실행 전마다 데이터 삭제!
+    }
+    
+    given("사용자가 존재할 때") {
+        val testUser = userService.createUser(...) // 여기서 생성하지만...
+        val userId = testUser.id
+        
+        then("테스트 1") {
+            // beforeEach에서 이미 삭제됨! userId는 존재하지 않는 사용자 ID
+            val result = someService.doSomething(userId) // 💥 실패
+        }
+        
+        then("테스트 2") {
+            // 이 테스트도 마찬가지로 beforeEach에서 데이터 삭제됨
+            val result = someService.doSomething(userId) // 💥 실패
+        }
+    }
+}
+
+// ✅ 올바른 방식 1 - 각 then 블록에서 데이터 생성
+init {
+    beforeEach {
+        userService.clear()
+    }
+    
+    given("사용자가 존재할 때") {
+        then("테스트 1") {
+            val testUser = userService.createUser(...) // then 블록 내부에서 생성
+            val userId = testUser.id
+            
+            val result = someService.doSomething(userId) // ✅ 성공
+        }
+        
+        then("테스트 2") {
+            val testUser = userService.createUser(...) // 독립적으로 생성
+            val userId = testUser.id
+            
+            val result = someService.doSomething(userId) // ✅ 성공
+        }
+    }
+}
+
+// ✅ 올바른 방식 2 - beforeEach를 given 내부로 이동
+init {
+    given("사용자가 존재할 때") {
+        beforeEach {
+            userService.clear() // given 스코프 내에서만 실행
+        }
+        
+        val testUser = userService.createUser(...)
+        val userId = testUser.id
+        
+        then("테스트 1") {
+            val result = someService.doSomething(userId) // ✅ 성공
+        }
+    }
+}
 ```
-@Test
-@DisplayName("상세한 테스트 시나리오 설명")
-fun testMethodName() {
-    // given - 테스트 준비 (객체 생성, Mocking 설정)
 
-    // when - 테스트 대상 함수 실행
+#### **📋 Kotest BehaviorSpec 체크리스트 (작업 전 필수 확인)**
 
-    // then - 결과 검증 (Assertion), 상호작용 검증 (Verification)
+- [ ] `beforeEach`/`afterEach`가 어느 스코프에 있는지 확인했는가?
+- [ ] 테스트 데이터를 `given` 블록에서 생성하는 경우, `beforeEach`에서 삭제되지 않는지 확인했는가?
+- [ ] 각 `then` 블록이 독립적으로 실행됨을 이해하고 있는가?
+- [ ] 테스트 간 데이터 공유가 필요한 경우 적절한 스코프에 배치했는가?
+- [ ] `BehaviorSpec` 상속 및 `SpringExtension` 추가했는가?
+- [ ] `given-when-then` BDD 스타일을 사용했는가?
+- [ ] `shouldBe, shouldNotBe` 등 Kotest 매처를 사용했는가?
+
+### 2.4 테스트 구조 (Given-When-Then)
+
+```kotlin
+// ✅ 올바른 Kotest 테스트 작성법
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
+class UserServiceTest(
+    private val userService: UserService
+) : BehaviorSpec() {
+    
+    override fun extensions() = listOf(SpringExtension)
+    
+    init {
+        beforeEach {
+            userService.clear() // 각 then 블록 전에 초기화
+        }
+        
+        given("사용자가 회원가입할 때") {
+            `when`("유효한 정보를 제공하면") {
+                then("사용자가 정상적으로 저장되어야 한다") {
+                    // 각 then 블록에서 독립적으로 데이터 생성
+                    val userData = UserCreateRequest("test@example.com", "닉네임", AuthProvider.GOOGLE)
+                    val savedUser = userService.createUser(userData)
+                    
+                    savedUser.id shouldNotBe null
+                    savedUser.email shouldBe "test@example.com"
+                }
+            }
+        }
+    }
 }
 ```
 

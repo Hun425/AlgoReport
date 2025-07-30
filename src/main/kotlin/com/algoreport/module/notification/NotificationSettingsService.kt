@@ -1,4 +1,4 @@
-package com.algoreport.module.user
+package com.algoreport.module.notification
 
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
