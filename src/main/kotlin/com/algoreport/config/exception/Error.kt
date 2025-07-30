@@ -32,6 +32,7 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     SOLVEDAC_ALREADY_LINKED(HttpStatus.CONFLICT, "E40903", "이미 연동된 solved.ac 계정입니다."),
     ALREADY_LINKED_SOLVEDAC_HANDLE(HttpStatus.CONFLICT, "E40904", "이미 다른 사용자가 연동한 핸들입니다."),
     DUPLICATE_GROUP_NAME(HttpStatus.CONFLICT, "E40905", "이미 존재하는 스터디 그룹명입니다."),
+    STUDY_GROUP_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "E40906", "스터디 그룹 정원이 초과되었습니다."),
     
     // 500 INTERNAL_SERVER_ERROR
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50001", "서버 내부 오류가 발생했습니다."),

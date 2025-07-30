@@ -63,6 +63,26 @@ class StudyGroupService {
         return updatedGroup
     }
     
+    /**
+     * 그룹에서 멤버를 제거합니다.
+     * 보상 트랜잭션 및 그룹 탈퇴 기능에서 사용됩니다.
+     * 
+     * @param groupId 그룹 ID
+     * @param userId 제거할 사용자 ID
+     * @return 업데이트된 그룹 정보, 그룹이 존재하지 않으면 null
+     */
+    fun removeMember(groupId: String, userId: String): StudyGroup? {
+        val group = studyGroups[groupId] ?: return null
+        val members = groupMembers[groupId] ?: return null
+        
+        // 멤버 제거 (실제로 멤버였는지 상관없이 제거 시도 - 멱등성 보장)
+        val removed = members.remove(userId)
+        val updatedGroup = group.copy(memberCount = members.size)
+        studyGroups[groupId] = updatedGroup
+        
+        return updatedGroup
+    }
+    
     fun deleteGroup(groupId: String) {
         val group = studyGroups[groupId]
         if (group != null) {
