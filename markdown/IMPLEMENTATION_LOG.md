@@ -395,15 +395,69 @@
   - `refactor: Refactor - CREATE_GROUP_SAGA 품질 개선` (46a3b96)
   - `fix: OutboxService 메서드 시그니처 수정` (38af9ba)
 
+#### **3.2 JOIN_GROUP_SAGA 구현** ✅ **완료** (2025-07-30)
+
+##### **3-2-1: [RED] 그룹 참여 검증 테스트 작성** ✅ **완료** (2025-07-30)
+- **완료 내용**:
+  - **JoinGroupSagaTest**: 8개 주요 테스트 시나리오 완료 (정상 참여, 사용자/그룹 검증, 중복 참여, 정원 초과, 보상 트랜잭션, 이벤트 발행)
+  - **Kotest BehaviorSpec 사용**: given-when-then 구조로 비즈니스 요구사항 명확화
+  - **JoinGroupSaga 빈 구현체**: TDD "Fake It" 방식으로 기본값만 반환 (모든 테스트 실패 유도)
+  - **데이터 클래스**: JoinGroupRequest, JoinGroupResult 모델 정의
+
+- **StudyGroupService 확장**:
+  - **JOIN_GROUP_SAGA 전용 메서드들 추가**:
+    - `isUserAlreadyMember()` - 중복 참여 체크
+    - `isGroupAtCapacity()` - 정원 확인 (최대 20명)
+    - `existsById()` - 그룹 존재 확인
+    - `getGroupMemberCount()` - 멤버 수 조회
+  - **멤버 관리 데이터 구조**: `groupMembers` ConcurrentHashMap 추가
+  - **최대 정원 상수**: `MAX_GROUP_CAPACITY = 20` 정의
+
+- **커밋 내역**:
+  - `test: Red - JOIN_GROUP_SAGA 테스트 작성` (a360746)
+
+##### **3-2-2: [GREEN] 5단계 SAGA 기본 구현** ✅ **완료** (2025-07-30)
+- **완료 내용**:
+  - **5단계 SAGA 패턴 완전 구현**:
+    - **Step 1**: `validateUser()` - 사용자 존재 여부 확인
+    - **Step 2**: `validateGroupExists()` - 그룹 존재 여부 확인  
+    - **Step 3**: `validateNotAlreadyJoined()` - 중복 참여 체크
+    - **Step 4**: `validateGroupCapacity()` - 그룹 정원 확인 (최대 20명)
+    - **Step 5**: `addMemberAndPublishEvent()` - 멤버 추가 및 이벤트 발행
+
+- **비즈니스 로직 완전 구현**:
+  - 모든 검증 단계에서 적절한 예외 처리 (`IllegalArgumentException`, `RuntimeException`)
+  - 단계별 상세한 로깅 (`logger.debug()`)
+  - 실제 그룹 멤버 추가 기능
+  - GROUP_JOINED 이벤트 발행 (`OutboxService` 통합)
+
+- **예외 처리 및 보상 트랜잭션**:
+  - `try-catch` 구조로 안전한 SAGA 실행
+  - 실패 시 적절한 에러 메시지 반환
+  - 기본적인 보상 트랜잭션 프레임워크 구현 (`executeCompensation()`)
+
+- **이벤트 발행**:
+  - `GROUP_JOINED` 이벤트를 OutboxService를 통해 발행
+  - 이벤트 데이터에 그룹ID, 사용자ID, 멤버 수, 타임스탬프 포함
+
+- **커밋 내역**:
+  - `feat: Green - JOIN_GROUP_SAGA 5단계 구현 완료` (53e496b)
+
+##### **3-2-3: [REFACTOR] 복합 보상 트랜잭션 완성** 🚀 **다음 작업**
+- [ ] 복합 보상 트랜잭션 완성 (단계별 롤백 로직)
+- [ ] CustomException 기반 구조화된 예외 처리
+- [ ] 멱등성 보장 강화
+- [ ] 코드 품질 개선 및 성능 최적화
+
 ## 📈 **Phase 3 진행률**
 
-- **전체 진행률**: 100% ✅ **완료** (Task 3-1 모든 단계 완료)
-- **현재 상태**: CREATE_GROUP_SAGA 전체 완료 (RED, GREEN, REFACTOR 모두 완료)
-- **완료 일자**: 2025-07-30
-- **다음 단계**: JOIN_GROUP_SAGA 구현
+- **전체 진행률**: 90% (Task 3-1 완료, Task 3-2 RED/GREEN 완료, REFACTOR 진행 중)
+- **현재 상태**: CREATE_GROUP_SAGA 완료, JOIN_GROUP_SAGA RED/GREEN 완료
+- **완료 일자**: 2025-07-30 (GREEN 단계까지)
+- **다음 단계**: JOIN_GROUP_SAGA REFACTOR 단계
 
 ## 🎯 **다음 우선순위** (Phase 3)
 
-1. **JOIN_GROUP_SAGA RED 단계**: 그룹 참여 검증 테스트 작성 🚀 **다음 작업** 
-2. **JOIN_GROUP_SAGA GREEN 단계**: 5단계 SAGA 기본 구현 (복잡한 검증 로직)
-3. **JOIN_GROUP_SAGA REFACTOR 단계**: 복합 보상 트랜잭션 완성
+1. **JOIN_GROUP_SAGA REFACTOR 단계**: 복합 보상 트랜잭션 완성 🚀 **다음 작업**
+2. **USER_PROFILE_UPDATE_SAGA**: Phase 4 준비 (중간 우선순위)
+3. **Phase 4: 분석 및 추천 기능**: 데이터 분석 결과 제공 (낮은 우선순위)
