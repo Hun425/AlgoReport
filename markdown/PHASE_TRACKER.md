@@ -125,7 +125,7 @@
 
 ---
 
-## Phase 3: 스터디 그룹 관리 (완료율: 10%)
+## Phase 3: 스터디 그룹 관리 (완료율: 30%)
 
 **목표**: 스터디 그룹 생성, 참여, 관리 기능을 완성합니다.
 **우선순위**: 🔥 **Critical** (핵심 비즈니스 로직)
@@ -139,8 +139,12 @@
   - **완료 내용**: CreateGroupSagaTest 작성 (6개 테스트 시나리오)
   - **구현된 기능**: 그룹 생성, 사용자 검증, 중복 그룹명 체크, 보상 트랜잭션 테스트
   - **RED 단계**: CreateGroupSaga 빈 구현체로 모든 테스트 실패 확인
-- [ ] **Task 3-1-2**: [GREEN] 4단계 SAGA 구현 🚀 **진행중**
-- [ ] **Task 3-1-3**: [REFACTOR] 그룹 관리 최적화
+- [x] **Task 3-1-2**: [GREEN] 5단계 SAGA 구현 ✅ **완료** (2025-07-30)
+  - **완료 내용**: CreateGroupSaga 완전 구현 (사용자 검증, 그룹명 중복체크, 그룹 생성, 멤버 추가, 이벤트 발행)
+  - **보상 트랜잭션**: executeCompensation() 구현으로 실패 시 생성된 그룹 롤백
+  - **StudyGroupService 강화**: findByName() 메서드 추가로 보상 로직 개선
+  - **테스트 구조 개선**: Kotest BehaviorSpec 데이터 생명주기 문제 해결
+- [ ] **Task 3-1-3**: [REFACTOR] 그룹 관리 최적화 🚀 **다음 작업**
 
 #### **3.2 JOIN_GROUP_SAGA 구현** (가장 복잡한 보상 로직)
 - [ ] **Task 3-2-1**: [RED] 그룹 참여 검증 테스트
@@ -196,14 +200,16 @@
 ## 🎯 **다음 액션 아이템**
 
 ### **즉시 시작 가능한 작업** (Phase 3)
-1. **CREATE_GROUP_SAGA [GREEN] 단계 구현** 🚀 **진행중**
-   - 4단계 SAGA 구현: 사용자 검증 → 중복 체크 → 그룹 생성 → 멤버 추가
-   - StudyGroupService 완전 구현
-   - 보상 트랜잭션 로직 구현
+1. **CREATE_GROUP_SAGA [REFACTOR] 단계 구현** 🚀 **다음 작업**
+   - 코드 품질 개선 및 성능 최적화
+   - 그룹 관리 로직 강화
+   - OutboxService 이벤트 발행 구현
 
-### **주요 완료 내용 (2025-07-29)**
-- **SolvedacLinkSagaTest 모든 테스트 통과**: TestConfiguration 개선, 사용자 ID 불일치 문제 해결
-- **CREATE_GROUP_SAGA RED 단계 완료**: CreateGroupSagaTest 작성, 빈 구현체로 테스트 실패 확인
+### **주요 완료 내용 (2025-07-30)**
+- **CREATE_GROUP_SAGA GREEN 단계 완료**: 5단계 SAGA 완전 구현 (사용자 검증, 그룹명 중복체크, 그룹 생성, 멤버 추가, 이벤트 발행)
+- **StudyGroupService 강화**: findByName() 메서드 추가로 보상 트랜잭션 로직 개선
+- **Kotest 데이터 생명주기 문제 해결**: CreateGroupSagaTest 구조 개선, 모든 테스트 통과
+- **문서화 강화**: TDD_GUIDE.md와 CODING_STANDARDS.md에 Kotest BehaviorSpec 가이드 추가
 
 ### **TDD 적용 전략**
 - **Red-Green-Refactor** 사이클을 각 SAGA마다 엄격히 적용
