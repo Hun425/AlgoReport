@@ -136,11 +136,12 @@ class UserServiceTest(
 
 ### **Technology Stack**
 
-- **Language**: Kotlin 2.2.0
+- **Language**: Kotlin 2.2.0 (Backend), TypeScript (Frontend)
 - **JDK**: Java 21 LTS
-- **Backend Framework**: Spring Boot 3.5.3, Spring Security, Spring Data JPA
-- **Frontend Framework**: Kotlin Multiplatform (Compose for Web/Android/iOS)
+- **Backend Framework**: Spring Boot 3.5.3, Spring Security, Spring Data JPA + QueryDSL
+- **Frontend Framework**: React + Next.js (추후 React Native/Flutter 모바일 확장 예정)
 - **Database**: PostgreSQL (Production), H2 (Testing)
+- **ORM**: Spring Data JPA + QueryDSL (타입 안전한 복잡 쿼리 지원)
 - **Message Queue**: Kafka + Kafka Connect
 - **CDC (Change Data Capture)**: Debezium + PostgreSQL WAL
 - **Cache**: Redis

@@ -1,5 +1,8 @@
 package com.algoreport.module.user
 
+import com.algoreport.module.analysis.AnalysisProfileService
+import com.algoreport.module.notification.EmailNotificationService
+import com.algoreport.module.notification.NotificationSettingsService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe

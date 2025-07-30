@@ -1,6 +1,9 @@
 package com.algoreport.module.user
 
 import com.algoreport.config.outbox.OutboxService
+import com.algoreport.module.analysis.AnalysisProfileService
+import com.algoreport.module.notification.EmailNotificationService
+import com.algoreport.module.notification.NotificationSettingsService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -167,57 +170,3 @@ class UserRegistrationSaga(
         }
     }
 }
-
-// 필요한 데이터 클래스들
-data class UserRegistrationRequest(
-    val authCode: String,
-    val email: String,
-    val nickname: String
-)
-
-data class UserRegistrationResult(
-    val sagaStatus: SagaStatus,
-    val userId: String?,
-    val errorMessage: String? = null
-)
-
-enum class SagaStatus {
-    PENDING,
-    IN_PROGRESS,
-    COMPLETED,
-    FAILED,
-    COMPENSATED
-}
-
-data class UserCreateRequest(
-    val email: String,
-    val nickname: String,
-    val provider: AuthProvider
-)
-
-enum class AuthProvider {
-    GOOGLE
-}
-
-data class User(
-    val id: String,
-    val email: String,
-    val nickname: String,
-    val profileImageUrl: String? = null,
-    val provider: AuthProvider,
-    val solvedacHandle: String? = null,
-    val solvedacTier: Int? = null,
-    val solvedacSolvedCount: Int? = null
-)
-
-// SOLVEDAC_LINK_SAGA 관련 데이터 클래스들
-data class SolvedacLinkRequest(
-    val userId: String,
-    val solvedacHandle: String
-)
-
-data class SolvedacLinkResult(
-    val sagaStatus: SagaStatus,
-    val linkedHandle: String?,
-    val errorMessage: String? = null
-)
