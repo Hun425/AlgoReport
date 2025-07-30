@@ -125,12 +125,12 @@
 
 ---
 
-## Phase 3: 스터디 그룹 관리 ✅ **완료** (완료율: 100%)
+## Phase 3: 스터디 그룹 관리 (완료율: 90%)
 
 **목표**: 스터디 그룹 생성, 참여, 관리 기능을 완성합니다.
 **우선순위**: 🔥 **Critical** (핵심 비즈니스 로직)
-**현재 상태**: ✅ **완료** (CREATE_GROUP_SAGA 완료)
-**완료 일자**: 2025-07-30
+**현재 상태**: CREATE_GROUP_SAGA 완료, JOIN_GROUP_SAGA RED/GREEN 완료
+**완료 일자**: 2025-07-30 (GREEN 단계까지)
 
 ### 📋 **SAGA 기반 세부 작업**
 
@@ -148,10 +148,16 @@
   - **완료 내용**: OutboxService 이벤트 발행 구현, CustomException 기반 예외 처리, 보상 트랜잭션 강화
   - **코드 품질**: KDoc 문서화, 주석 정리, TODO 제거, 컴파일 오류 수정
 
-#### **3.2 JOIN_GROUP_SAGA 구현** (다음 Phase에서 구현 예정)
-- [ ] **Task 3-2-1**: [RED] 그룹 참여 검증 테스트 🚀 **다음 작업**
-- [ ] **Task 3-2-2**: [GREEN] 5단계 SAGA 기본 구현
-- [ ] **Task 3-2-3**: [REFACTOR] 복합 보상 트랜잭션 완성
+#### **3.2 JOIN_GROUP_SAGA 구현** ✅ **부분 완료** (2025-07-30)
+- [x] **Task 3-2-1**: [RED] 그룹 참여 검증 테스트 ✅ **완료** (2025-07-30)
+  - **완료 내용**: JoinGroupSagaTest 작성 (8개 주요 테스트 시나리오)
+  - **구현된 기능**: 정상 참여, 사용자/그룹 검증, 중복 참여, 정원 초과, 보상 트랜잭션, 이벤트 발행 테스트
+  - **StudyGroupService 확장**: JOIN_GROUP_SAGA 전용 메서드들 추가
+- [x] **Task 3-2-2**: [GREEN] 5단계 SAGA 기본 구현 ✅ **완료** (2025-07-30)
+  - **완료 내용**: 5단계 SAGA 패턴 완전 구현 (사용자 검증, 그룹 존재 확인, 중복 참여 체크, 정원 확인, 멤버 추가 및 이벤트 발행)
+  - **비즈니스 로직**: 모든 검증 단계 구현, GROUP_JOINED 이벤트 발행
+  - **예외 처리**: try-catch 구조로 안전한 SAGA 실행
+- [ ] **Task 3-2-3**: [REFACTOR] 복합 보상 트랜잭션 완성 🚀 **다음 작업**
 
 **실제 소요시간**: 2일 (예상: 4-5일)
 
@@ -202,16 +208,17 @@
 ## 🎯 **다음 액션 아이템**
 
 ### **즉시 시작 가능한 작업** (Phase 3)
-1. **CREATE_GROUP_SAGA [REFACTOR] 단계 구현** 🚀 **다음 작업**
+1. **JOIN_GROUP_SAGA [REFACTOR] 단계 구현** 🚀 **다음 작업**
+   - 복합 보상 트랜잭션 완성 (단계별 롤백 로직)
+   - CustomException 기반 구조화된 예외 처리
+   - 멱등성 보장 강화
    - 코드 품질 개선 및 성능 최적화
-   - 그룹 관리 로직 강화
-   - OutboxService 이벤트 발행 구현
 
 ### **주요 완료 내용 (2025-07-30)**
-- **CREATE_GROUP_SAGA GREEN 단계 완료**: 5단계 SAGA 완전 구현 (사용자 검증, 그룹명 중복체크, 그룹 생성, 멤버 추가, 이벤트 발행)
-- **StudyGroupService 강화**: findByName() 메서드 추가로 보상 트랜잭션 로직 개선
-- **Kotest 데이터 생명주기 문제 해결**: CreateGroupSagaTest 구조 개선, 모든 테스트 통과
-- **문서화 강화**: TDD_GUIDE.md와 CODING_STANDARDS.md에 Kotest BehaviorSpec 가이드 추가
+- **JOIN_GROUP_SAGA GREEN 단계 완료**: 5단계 SAGA 완전 구현 (사용자 검증, 그룹 존재 확인, 중복 참여 체크, 정원 확인, 멤버 추가 및 이벤트 발행)
+- **StudyGroupService 확장**: JOIN_GROUP_SAGA 전용 메서드들 추가 (isUserAlreadyMember, isGroupAtCapacity, existsById, getGroupMemberCount)
+- **비즈니스 로직 완전 구현**: 모든 검증 단계, GROUP_JOINED 이벤트 발행, OutboxService 통합
+- **예외 처리 및 보상 트랜잭션**: try-catch 구조로 안전한 SAGA 실행, 기본 보상 트랜잭션 프레임워크
 
 ### **TDD 적용 전략**
 - **Red-Green-Refactor** 사이클을 각 SAGA마다 엄격히 적용
