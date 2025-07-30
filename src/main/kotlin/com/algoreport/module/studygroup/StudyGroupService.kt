@@ -15,6 +15,11 @@ class StudyGroupService {
     // 테스트용 인메모리 저장소
     private val studyGroups = ConcurrentHashMap<String, StudyGroup>()
     private val nameIndex = ConcurrentHashMap<String, String>() // name -> groupId
+    private val groupMembers = ConcurrentHashMap<String, MutableSet<String>>() // groupId -> Set<userId>
+    
+    companion object {
+        const val MAX_GROUP_CAPACITY = 20
+    }
     
     fun createGroup(request: CreateGroupRequest): StudyGroup {
         val groupId = UUID.randomUUID().toString()
@@ -29,6 +34,7 @@ class StudyGroupService {
         
         studyGroups[groupId] = group
         nameIndex[request.name] = groupId
+        groupMembers[groupId] = mutableSetOf() // 빈 멤버 리스트 초기화
         
         return group
     }
@@ -48,7 +54,11 @@ class StudyGroupService {
     
     fun addMember(groupId: String, userId: String): StudyGroup? {
         val group = studyGroups[groupId] ?: return null
-        val updatedGroup = group.copy(memberCount = group.memberCount + 1)
+        val members = groupMembers[groupId] ?: return null
+        
+        // 멤버 추가
+        members.add(userId)
+        val updatedGroup = group.copy(memberCount = members.size)
         studyGroups[groupId] = updatedGroup
         return updatedGroup
     }
@@ -58,13 +68,50 @@ class StudyGroupService {
         if (group != null) {
             studyGroups.remove(groupId)
             nameIndex.remove(group.name)
+            groupMembers.remove(groupId)
         }
+    }
+    
+    /**
+     * JOIN_GROUP_SAGA에서 사용하는 메서드들
+     */
+    
+    /**
+     * 사용자가 이미 그룹의 멤버인지 확인
+     */
+    fun isUserAlreadyMember(groupId: String, userId: String): Boolean {
+        val members = groupMembers[groupId] ?: return false
+        return members.contains(userId)
+    }
+    
+    /**
+     * 그룹이 정원에 도달했는지 확인
+     */
+    fun isGroupAtCapacity(groupId: String): Boolean {
+        val group = studyGroups[groupId] ?: return true // 그룹이 없으면 참여 불가
+        return group.memberCount >= MAX_GROUP_CAPACITY
+    }
+    
+    /**
+     * 그룹의 현재 멤버 수 조회
+     */
+    fun getGroupMemberCount(groupId: String): Int {
+        val group = studyGroups[groupId] ?: return 0
+        return group.memberCount
+    }
+    
+    /**
+     * 그룹이 존재하는지 확인
+     */
+    fun existsById(groupId: String): Boolean {
+        return studyGroups.containsKey(groupId)
     }
     
     // 테스트용 메서드
     fun clear() {
         studyGroups.clear()
         nameIndex.clear()
+        groupMembers.clear()
     }
 }
 
