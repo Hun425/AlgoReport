@@ -81,7 +81,27 @@ class InitialDataSyncSagaTest : BehaviorSpec({
                 verify(exactly = 2) { outboxService.publishEvent(any(), any(), any(), any()) }
             }
         }
-        
+
+        `when`("완전 실패 시나리오를 실행할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+
+            // 배치 계획 생성 시 예외 발생 Mock
+            every { dataSyncBatchService.createBatchPlan(userId, handle, 6, 100) } throws RuntimeException("Batch plan creation failed")
+
+            then("SAGA가 실패 상태로 완료되어야 한다") {
+                val result = runBlocking { saga.startSaga(userId, handle) }
+
+                result shouldNotBe null
+                result.successful shouldBe false
+                result.sagaStatus shouldBe SagaStatus.FAILED
+                result.failureReason shouldNotBe null
+
+                // 긴급 보상 트랜잭션 이벤트 발행 검증
+                verify(atLeast = 1) { outboxService.publishEvent(any(), any(), any(), any()) }
+            }
+        }
+
         `when`("부분 실패 시나리오를 실행할 때") {
             val userId = UUID.randomUUID()
             val handle = "testuser"
@@ -140,7 +160,66 @@ class InitialDataSyncSagaTest : BehaviorSpec({
                 verify(atLeast = 2) { outboxService.publishEvent(any(), any(), any(), any()) }
             }
         }
-        
+
+        `when`("부분 실패 (낮은 성공률) 시나리오를 실행할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+
+            val batchPlan = BatchPlan(
+                userId = userId,
+                handle = handle,
+                batchSize = 100,
+                totalBatches = 10,
+                estimatedSubmissions = 1000
+            )
+            every { dataSyncBatchService.createBatchPlan(userId, handle, 6, 100) } returns batchPlan
+
+            // 50% 성공 Mock (5개 성공, 5개 실패)
+            var batchCount = 0
+            every { 
+                rateLimitAwareBatchService.collectBatchWithRateLimit(any(), handle, any(), 100) 
+            } answers {
+                batchCount++
+                if (batchCount <= 5) {
+                    RateLimitAwareBatchResult(
+                        syncJobId = firstArg(),
+                        batchNumber = batchCount,
+                        successful = true,
+                        collectedCount = 100,
+                        retryAttempts = 1,
+                        rateLimitHandled = false,
+                        totalRetryTimeMs = 1000L
+                    )
+                } else {
+                    RateLimitAwareBatchResult(
+                        syncJobId = firstArg(),
+                        batchNumber = batchCount,
+                        successful = false,
+                        collectedCount = 0,
+                        retryAttempts = 3,
+                        rateLimitHandled = true,
+                        totalRetryTimeMs = 5000L,
+                        errorMessage = "Rate limit exceeded"
+                    )
+                }
+            }
+
+            then("데이터 정리 이벤트가 발행되어야 한다") {
+                val result = runBlocking { saga.startSaga(userId, handle) }
+
+                result shouldNotBe null
+                result.successful shouldBe false
+                result.sagaStatus shouldBe SagaStatus.PARTIALLY_COMPLETED
+                result.totalBatches shouldBe 10
+                result.successfulBatches shouldBe 5
+                result.failedBatches shouldBe 5
+                result.failureReason shouldNotBe null
+
+                // 데이터 정리 이벤트 발행 검증
+                verify(atLeast = 2) { outboxService.publishEvent(any(), any(), any(), any()) }
+            }
+        }
+
         `when`("Kotlin Coroutines 병렬 처리 성능을 테스트할 때") {
             val userId = UUID.randomUUID()
             val handle = "testuser"
@@ -190,10 +269,45 @@ class InitialDataSyncSagaTest : BehaviorSpec({
             }
         }
         
+        }
+            }
+        }
+
         `when`("SAGA 재시작을 테스트할 때") {
             val sagaId = UUID.randomUUID()
             val userId = UUID.randomUUID()
-            
+
+            // 체크포인트가 없는 경우 Mock
+            every { checkpointRepository.findBySyncJobId(sagaId) } returns null
+
+            then("체크포인트가 없으면 null을 반환해야 한다") {
+                val result = saga.resumeSaga(sagaId)
+                result shouldBe null
+            }
+
+            `and`("체크포인트가 있지만 재개할 수 없는 경우") {
+                val sagaIdCannotResume = UUID.randomUUID()
+                val userIdCannotResume = UUID.randomUUID()
+
+                val checkpointCannotResume = DataSyncCheckpoint(
+                    syncJobId = sagaIdCannotResume,
+                    userId = userIdCannotResume,
+                    currentBatch = 5,
+                    totalBatches = 10,
+                    lastProcessedSubmissionId = 5L,
+                    collectedCount = 500,
+                    failedAttempts = 5,
+                    checkpointAt = java.time.LocalDateTime.now(),
+                    canResume = false // 재개 불가능 설정
+                )
+                every { checkpointRepository.findBySyncJobId(sagaIdCannotResume) } returns checkpointCannotResume
+
+                then("null을 반환해야 한다") {
+                    val result = saga.resumeSaga(sagaIdCannotResume)
+                    result shouldBe null
+                }
+            }
+
             // 기존 체크포인트 Mock
             val checkpoint = DataSyncCheckpoint(
                 syncJobId = sagaId,
@@ -207,7 +321,7 @@ class InitialDataSyncSagaTest : BehaviorSpec({
                 canResume = true
             )
             every { checkpointRepository.findBySyncJobId(sagaId) } returns checkpoint
-            
+
             // 복구 결과 Mock
             val recoveryResult = SyncRecoveryResult(
                 syncJobId = sagaId,
@@ -220,10 +334,10 @@ class InitialDataSyncSagaTest : BehaviorSpec({
             every { 
                 dataSyncBatchService.recoverFailedSync(userId, "recovered", 3) 
             } returns recoveryResult
-            
+
             then("체크포인트부터 성공적으로 재시작되어야 한다") {
                 val result = saga.resumeSaga(sagaId)
-                
+
                 result shouldNotBe null
                 result!!.successful shouldBe true
                 result.sagaStatus shouldBe SagaStatus.RECOVERED
@@ -231,13 +345,13 @@ class InitialDataSyncSagaTest : BehaviorSpec({
                 result.successfulBatches shouldBe 10
                 result.failedBatches shouldBe 0
                 result.executionTimeMs shouldBe (2L * 60000) // 2분
-                
+
                 verify(exactly = 1) { 
                     dataSyncBatchService.recoverFailedSync(userId, "recovered", 3) 
                 }
             }
         }
-        
+
         `when`("성능 최적화를 테스트할 때") {
             val performanceOptimizer = SagaPerformanceOptimizer()
             

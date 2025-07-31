@@ -204,5 +204,87 @@ class OutboxServiceTest : BehaviorSpec({
                 jsonString shouldBe "{}"
             }
         }
+        
+        `when`("getEventStatistics를 호출할 때") {
+            every { outboxEventRepository.countUnprocessedEvents() } returns 5L
+            every { outboxEventRepository.count() } returns 20L
+            
+            then("올바른 통계 정보를 반환해야 한다") {
+                val statistics = outboxService.getEventStatistics()
+                
+                statistics.totalEvents shouldBe 20L
+                statistics.unprocessedEvents shouldBe 5L
+                statistics.retryingEvents shouldBe 0L
+                statistics.processedEvents shouldBe 15L
+                
+                verify(exactly = 1) { outboxEventRepository.countUnprocessedEvents() }
+                verify(exactly = 1) { outboxEventRepository.count() }
+            }
+        }
+    }
+    
+    given("OutboxService.EventStatistics 데이터 클래스") {
+        `when`("동일한 데이터로 객체를 생성할 때") {
+            val statistics1 = OutboxService.EventStatistics(
+                totalEvents = 100L,
+                unprocessedEvents = 10L,
+                retryingEvents = 5L,
+                processedEvents = 85L
+            )
+            
+            val statistics2 = OutboxService.EventStatistics(
+                totalEvents = 100L,
+                unprocessedEvents = 10L,
+                retryingEvents = 5L,
+                processedEvents = 85L
+            )
+            
+            val statistics3 = OutboxService.EventStatistics(
+                totalEvents = 200L,
+                unprocessedEvents = 20L,
+                retryingEvents = 10L,
+                processedEvents = 170L
+            )
+            
+            then("equals와 hashCode가 올바르게 동작해야 한다") {
+                statistics1 shouldBe statistics2
+                statistics1.hashCode() shouldBe statistics2.hashCode()
+                statistics1 shouldNotBe statistics3
+            }
+        }
+        
+        `when`("객체의 필드를 확인할 때") {
+            val statistics = OutboxService.EventStatistics(
+                totalEvents = 100L,
+                unprocessedEvents = 10L,
+                retryingEvents = 5L,
+                processedEvents = 85L
+            )
+            
+            then("모든 필드가 올바르게 설정되어야 한다") {
+                statistics.totalEvents shouldBe 100L
+                statistics.unprocessedEvents shouldBe 10L
+                statistics.retryingEvents shouldBe 5L
+                statistics.processedEvents shouldBe 85L
+            }
+        }
+        
+        `when`("copy 메서드를 사용할 때") {
+            val original = OutboxService.EventStatistics(
+                totalEvents = 100L,
+                unprocessedEvents = 10L,
+                retryingEvents = 5L,
+                processedEvents = 85L
+            )
+            
+            val copied = original.copy(totalEvents = 150L)
+            
+            then("지정된 필드만 변경되어야 한다") {
+                copied.totalEvents shouldBe 150L
+                copied.unprocessedEvents shouldBe original.unprocessedEvents
+                copied.retryingEvents shouldBe original.retryingEvents
+                copied.processedEvents shouldBe original.processedEvents
+            }
+        }
     }
 })
