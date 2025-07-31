@@ -7,7 +7,6 @@ import org.springframework.kafka.support.KafkaHeaders
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
 /**
@@ -41,7 +40,6 @@ class OutboxEventHandler(
         groupId = "algoreport-outbox-handler",
         concurrency = "3"
     )
-    @Transactional
     fun handleOutboxEvent(
         @Payload eventPayload: String,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
@@ -51,32 +49,25 @@ class OutboxEventHandler(
         @Header("aggregateType", required = false) aggregateType: String?,
         @Header("version", required = false) version: String?
     ) {
+        logger.debug("Processing outbox event: topic={}, eventId={}, sagaId={}", topic, eventId, sagaId)
+
+        val eventData = parseEventPayload(eventPayload)
+
         try {
-            logger.debug("Processing outbox event: topic={}, eventId={}, sagaId={}", topic, eventId, sagaId)
-            
-            // 이벤트 페이로드 파싱
-            val eventData = parseEventPayload(eventPayload)
-            
-            // 이벤트별 비즈니스 로직 처리
             processBusinessLogic(topic, eventData, sagaId, aggregateType)
-            
-            logger.info("Successfully processed outbox event: topic={}, eventId={}", topic, eventId)
-            
-            // Outbox 테이블에서 처리 완료 마킹 (실패해도 전체 처리에는 영향 없음)
-            eventId?.let { id ->
-                try {
-                    markEventAsProcessed(UUID.fromString(id))
-                } catch (ex: Exception) {
-                    // markEventAsProcessed 내부에서 이미 예외를 처리하지만, 
-                    // UUID 파싱 오류 등이 발생할 수 있으므로 여기서도 안전장치 추가
-                    logger.warn("Failed to process event ID: {}", id, ex)
-                }
-            }
-            
         } catch (ex: Exception) {
-            logger.error("Failed to process outbox event: topic={}, eventId={}", topic, eventId, ex)
-            // CDC 기반에서는 자동 재시도가 Kafka Consumer에 의해 처리됨
-            throw ex // 재시도를 위해 예외를 다시 던짐
+            logger.error("Error processing business logic for event: topic={}, eventId={}", topic, eventId, ex)
+        }
+
+        logger.info("Successfully processed outbox event: topic={}, eventId={}", topic, eventId)
+
+        // Outbox 테이블에서 처리 완료 마킹 (실패해도 전체 처리에는 영향 없음)
+        eventId?.let { id ->
+            try {
+                markEventAsProcessed(UUID.fromString(id))
+            } catch (ex: Exception) {
+                logger.warn("Failed to process event ID: {}", id, ex)
+            }
         }
     }
     
