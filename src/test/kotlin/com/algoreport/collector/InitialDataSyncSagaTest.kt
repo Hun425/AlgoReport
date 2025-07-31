@@ -269,10 +269,6 @@ class InitialDataSyncSagaTest : BehaviorSpec({
             }
         }
         
-        }
-            }
-        }
-
         `when`("SAGA 재시작을 테스트할 때") {
             val sagaId = UUID.randomUUID()
             val userId = UUID.randomUUID()
