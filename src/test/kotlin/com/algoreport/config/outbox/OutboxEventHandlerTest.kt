@@ -304,6 +304,99 @@ class OutboxEventHandlerTest : BehaviorSpec() {
                     verify(exactly = 0) { outboxEventRepository.save(any()) }
                 }
             }
+
+            `when`("USER_PROFILE_UPDATED 이벤트를 처리할 때") {
+                // 각 테스트마다 새로운 Mock 인스턴스 생성
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val objectMapper = ObjectMapper()
+                val handler = OutboxEventHandler(outboxEventRepository, objectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"userId": "user123", "profileData": "updated"}"""
+                val topic = "USER_PROFILE_UPDATED"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("사용자 프로필 업데이트 이벤트가 성공적으로 처리되어야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "USER",
+                        version = "1"
+                    )
+
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
+
+            `when`("MEMBER_JOINED 이벤트를 처리할 때") {
+                // 각 테스트마다 새로운 Mock 인스턴스 생성
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val objectMapper = ObjectMapper()
+                val handler = OutboxEventHandler(outboxEventRepository, objectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"groupId": "group123", "userId": "user456"}"""
+                val topic = "MEMBER_JOINED"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("멤버 참여 이벤트가 성공적으로 처리되어야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "STUDY_GROUP",
+                        version = "1"
+                    )
+
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
+
+            `when`("ANALYSIS_COMPLETED 이벤트를 처리할 때") {
+                // 각 테스트마다 새로운 Mock 인스턴스 생성
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val objectMapper = ObjectMapper()
+                val handler = OutboxEventHandler(outboxEventRepository, objectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"analysisId": "analysis123", "result": "completed"}"""
+                val topic = "ANALYSIS_COMPLETED"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("분석 완료 이벤트가 성공적으로 처리되어야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "ANALYSIS",
+                        version = "1"
+                    )
+
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
         }
     }
 }
