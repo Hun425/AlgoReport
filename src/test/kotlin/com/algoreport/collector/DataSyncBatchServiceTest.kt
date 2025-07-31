@@ -286,6 +286,137 @@ class DataSyncBatchServiceTest : BehaviorSpec({
                 recoveryResult.recoverySuccessful shouldBe true
             }
         }
+        
+        `when`("체크포인트가 복구 불가능한 상태일 때") {
+            val syncJobId = UUID.randomUUID()
+            
+            // 복구 불가능한 체크포인트 Mock 설정
+            val checkpoint = DataSyncCheckpoint(
+                syncJobId = syncJobId,
+                userId = UUID.randomUUID(),
+                currentBatch = 3,
+                totalBatches = 5,
+                lastProcessedSubmissionId = 12345L,
+                collectedCount = 200,
+                failedAttempts = 5, // 최대 재시도 횟수 초과
+                checkpointAt = LocalDateTime.now().minusDays(30), // 30일 전 체크포인트
+                canResume = false // 복구 불가능
+            )
+            
+            every { checkpointRepository.findBySyncJobId(syncJobId) } returns checkpoint
+            
+            then("복구가 실패해야 한다") {
+                val resumeSuccess = dataSyncBatchService.resumeFromCheckpoint(syncJobId)
+                
+                resumeSuccess shouldBe false
+            }
+        }
+        
+        `when`("체크포인트가 존재하지 않을 때") {
+            val syncJobId = UUID.randomUUID()
+            
+            every { checkpointRepository.findBySyncJobId(syncJobId) } returns null
+            
+            then("복구가 실패해야 한다") {
+                val resumeSuccess = dataSyncBatchService.resumeFromCheckpoint(syncJobId)
+                
+                resumeSuccess shouldBe false
+            }
+        }
+        
+        `when`("완료된 작업의 진행률을 계산할 때") {
+            val syncJobId = UUID.randomUUID()
+            val currentBatch = 5 // 완료됨
+            val totalBatches = 5
+            
+            then("100% 완료로 표시되어야 한다") {
+                val progress = dataSyncBatchService.calculateProgress(
+                    syncJobId = syncJobId,
+                    currentBatch = currentBatch,
+                    totalBatches = totalBatches
+                )
+                
+                progress.progressPercentage shouldBe 100.0
+                progress.isCompleted shouldBe true
+            }
+        }
+        
+        
+        `when`("재시도 횟수가 초과된 작업을 복구할 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+            
+            // 재시도 횟수 초과된 체크포인트 Mock 설정
+            val checkpoint = DataSyncCheckpoint(
+                syncJobId = UUID.randomUUID(),
+                userId = userId,
+                currentBatch = 5,
+                totalBatches = 10,
+                lastProcessedSubmissionId = 12345L,
+                collectedCount = 500,
+                failedAttempts = 5, // 최대 재시도(3) 초과
+                checkpointAt = LocalDateTime.now(),
+                canResume = true
+            )
+            
+            every { checkpointRepository.findLatestByUserId(userId) } returns checkpoint
+            
+            then("복구가 실패해야 한다") {
+                val recoveryResult = dataSyncBatchService.recoverFailedSync(
+                    userId = userId,
+                    handle = handle,
+                    maxRetryAttempts = 3
+                )
+                
+                recoveryResult shouldNotBe null
+                recoveryResult.userId shouldBe userId
+                recoveryResult.recoverySuccessful shouldBe false
+                recoveryResult.failureReason shouldNotBe null
+            }
+        }
+        
+        `when`("복구할 체크포인트가 없을 때") {
+            val userId = UUID.randomUUID()
+            val handle = "testuser"
+            
+            every { checkpointRepository.findLatestByUserId(userId) } returns null
+            
+            then("복구가 실패해야 한다") {
+                val recoveryResult = dataSyncBatchService.recoverFailedSync(
+                    userId = userId,
+                    handle = handle,
+                    maxRetryAttempts = 3
+                )
+                
+                recoveryResult shouldNotBe null
+                recoveryResult.userId shouldBe userId
+                recoveryResult.resumedFromBatch shouldBe 0 // 체크포인트 없음
+                recoveryResult.recoverySuccessful shouldBe false
+                recoveryResult.failureReason shouldBe "No checkpoint found for recovery"
+            }
+        }
+        
+        `when`("정상적으로 배치 수집할 때 (에러 없음)") {
+            val syncJobId = UUID.randomUUID()
+            val handle = "testuser"
+            val batchNumber = 1
+            val batchSize = 100
+            
+            then("성공적으로 수집되어야 한다") {
+                val result = dataSyncBatchService.collectBatchWithErrorHandling(
+                    syncJobId = syncJobId,
+                    handle = handle,
+                    batchNumber = batchNumber,
+                    batchSize = batchSize,
+                    simulateError = false // 에러 없음
+                )
+                
+                result shouldNotBe null
+                result.successful shouldBe true
+                result.errorMessage shouldBe null
+                result.failedAt shouldBe null
+            }
+        }
     }
 })
 

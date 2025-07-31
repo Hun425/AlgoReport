@@ -2,14 +2,20 @@ package com.algoreport.module.user
 
 import com.algoreport.collector.SolvedacApiClient
 import com.algoreport.collector.dto.UserInfo
+import com.algoreport.config.exception.CustomException
+import com.algoreport.config.exception.Error
 import com.algoreport.config.outbox.OutboxService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.extensions.spring.SpringExtension
+import io.mockk.mockk
+import io.mockk.every
+import io.mockk.verify
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
+import java.util.*
 
 /**
  * SOLVEDAC_LINK_SAGA 테스트
@@ -171,6 +177,174 @@ class SolvedacLinkSagaTest(
                     
                     result.sagaStatus shouldBe SagaStatus.FAILED
                     result.errorMessage shouldNotBe null
+                }
+            }
+        }
+        
+        given("SOLVEDAC_LINK_SAGA Mock을 사용한 실패 시나리오 테스트") {
+            val mockUserService = mockk<UserService>()
+            val mockSolvedacApiClient = mockk<SolvedacApiClient>()
+            val mockOutboxService = mockk<OutboxService>()
+            
+            val saga = SolvedacLinkSaga(
+                userService = mockUserService,
+                solvedacApiClient = mockSolvedacApiClient,
+                outboxService = mockOutboxService
+            )
+            
+            `when`("사용자가 존재하지 않을 때") {
+                then("USER_NOT_FOUND 에러가 발생해야 한다") {
+                    every { mockUserService.findById("nonexistent") } returns null
+                    
+                    val request = SolvedacLinkRequest(
+                        userId = "nonexistent",
+                        solvedacHandle = "testhandle"
+                    )
+                    
+                    val result = saga.start(request)
+                    
+                    result.sagaStatus shouldBe SagaStatus.FAILED
+                    result.errorMessage shouldBe Error.USER_NOT_FOUND.message
+                    
+                    verify(exactly = 1) { mockUserService.findById("nonexistent") }
+                    verify(exactly = 0) { mockSolvedacApiClient.getUserInfo(any()) }
+                }
+            }
+            
+            `when`("핸들이 이미 다른 사용자에 의해 연동되었을 때") {
+                then("ALREADY_LINKED_SOLVEDAC_HANDLE 에러가 발생해야 한다") {
+                    val testUser = User(
+                        id = "user1",
+                        email = "test@example.com",
+                        nickname = "테스트사용자",
+                        provider = AuthProvider.GOOGLE
+                    )
+                    
+                    every { mockUserService.findById("user1") } returns testUser
+                    every { mockUserService.existsBySolvedacHandle("duplicatehandle") } returns true
+                    
+                    val request = SolvedacLinkRequest(
+                        userId = "user1",
+                        solvedacHandle = "duplicatehandle"
+                    )
+                    
+                    val result = saga.start(request)
+                    
+                    result.sagaStatus shouldBe SagaStatus.FAILED
+                    result.errorMessage shouldBe Error.ALREADY_LINKED_SOLVEDAC_HANDLE.message
+                    
+                    verify(exactly = 1) { mockUserService.findById("user1") }
+                    verify(exactly = 1) { mockUserService.existsBySolvedacHandle("duplicatehandle") }
+                    verify(exactly = 0) { mockSolvedacApiClient.getUserInfo(any()) }
+                }
+            }
+            
+            `when`("solved.ac API에서 사용자를 찾을 수 없을 때") {
+                then("SOLVEDAC_USER_NOT_FOUND 에러가 발생해야 한다") {
+                    val testUser = User(
+                        id = "user1",
+                        email = "test@example.com",
+                        nickname = "테스트사용자",
+                        provider = AuthProvider.GOOGLE
+                    )
+                    
+                    every { mockUserService.findById("user1") } returns testUser
+                    every { mockUserService.existsBySolvedacHandle("invalidhandle") } returns false
+                    every { mockSolvedacApiClient.getUserInfo("invalidhandle") } throws CustomException(Error.SOLVEDAC_USER_NOT_FOUND)
+                    
+                    val request = SolvedacLinkRequest(
+                        userId = "user1",
+                        solvedacHandle = "invalidhandle"
+                    )
+                    
+                    val result = saga.start(request)
+                    
+                    result.sagaStatus shouldBe SagaStatus.FAILED
+                    result.errorMessage shouldBe Error.SOLVEDAC_USER_NOT_FOUND.message
+                    
+                    verify(exactly = 1) { mockSolvedacApiClient.getUserInfo("invalidhandle") }
+                    verify(exactly = 0) { mockUserService.updateSolvedacInfo(any(), any(), any(), any()) }
+                }
+            }
+            
+            `when`("사용자 프로필 업데이트가 실패할 때") {
+                then("보상 트랜잭션이 실행되어야 한다") {
+                    val originalUser = User(
+                        id = "user1",
+                        email = "test@example.com",
+                        nickname = "테스트사용자",
+                        provider = AuthProvider.GOOGLE,
+                        solvedacHandle = "originalhandle",
+                        solvedacTier = 15,
+                        solvedacSolvedCount = 100
+                    )
+                    
+                    val userInfo = UserInfo(
+                        handle = "newhandle",
+                        tier = 20,
+                        solvedCount = 200
+                    )
+                    
+                    every { mockUserService.findById("user1") } returns originalUser
+                    every { mockUserService.existsBySolvedacHandle("newhandle") } returns false
+                    every { mockSolvedacApiClient.getUserInfo("newhandle") } returns userInfo
+                    every { mockUserService.updateSolvedacInfo("user1", "newhandle", 20, 200) } returns null
+                    every { mockUserService.updateSolvedacInfo("user1", "originalhandle", 15, 100) } returns originalUser
+                    
+                    val request = SolvedacLinkRequest(
+                        userId = "user1",
+                        solvedacHandle = "newhandle"
+                    )
+                    
+                    val result = saga.start(request)
+                    
+                    result.sagaStatus shouldBe SagaStatus.FAILED
+                    result.errorMessage shouldBe Error.USER_UPDATE_FAILED.message
+                    
+                    // 보상 트랜잭션 확인: 원본 정보로 롤백 시도
+                    verify(exactly = 1) { mockUserService.updateSolvedacInfo("user1", "originalhandle", 15, 100) }
+                }
+            }
+            
+            `when`("이벤트 발행이 실패할 때") {
+                then("EVENT_PUBLISH_FAILED 에러가 발생해야 한다") {
+                    val testUser = User(
+                        id = "user1",
+                        email = "test@example.com",
+                        nickname = "테스트사용자",
+                        provider = AuthProvider.GOOGLE
+                    )
+                    
+                    val userInfo = UserInfo(
+                        handle = "testhandle",
+                        tier = 15,
+                        solvedCount = 100
+                    )
+                    
+                    every { mockUserService.findById("user1") } returns testUser
+                    every { mockUserService.existsBySolvedacHandle("testhandle") } returns false
+                    every { mockSolvedacApiClient.getUserInfo("testhandle") } returns userInfo
+                    every { mockUserService.updateSolvedacInfo("user1", "testhandle", 15, 100) } returns testUser.copy(
+                        solvedacHandle = "testhandle",
+                        solvedacTier = 15,
+                        solvedacSolvedCount = 100
+                    )
+                    every { mockOutboxService.publishEvent(any(), any(), any(), any()) } throws RuntimeException("Event publish failed")
+                    every { mockUserService.updateSolvedacInfo("user1", "", 0, 0) } returns testUser
+                    
+                    val request = SolvedacLinkRequest(
+                        userId = "user1",
+                        solvedacHandle = "testhandle"
+                    )
+                    
+                    val result = saga.start(request)
+                    
+                    result.sagaStatus shouldBe SagaStatus.FAILED
+                    result.errorMessage shouldBe Error.EVENT_PUBLISH_FAILED.message
+                    
+                    verify(exactly = 1) { mockOutboxService.publishEvent(any(), any(), any(), any()) }
+                    // 보상 트랜잭션 확인
+                    verify(exactly = 1) { mockUserService.updateSolvedacInfo("user1", "", 0, 0) }
                 }
             }
         }
