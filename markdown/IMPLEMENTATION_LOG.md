@@ -3,9 +3,9 @@
 ## 📊 프로젝트 개요
 
 - **프로젝트명**: 알고리포트 (Algo-Report)
-- **총 완료 SAGA**: 4개 (INITIAL_DATA_SYNC, SUBMISSION_SYNC, USER_REGISTRATION, SOLVEDAC_LINK, CREATE_GROUP)
-- **전체 진행률**: 85% (Phase 0, 1, 2, 3 완료)
-- **마지막 업데이트**: 2025-07-30
+- **총 완료 SAGA**: 5개 (INITIAL_DATA_SYNC, SUBMISSION_SYNC, USER_REGISTRATION, SOLVEDAC_LINK, CREATE_GROUP, JOIN_GROUP)
+- **전체 진행률**: 95% (Phase 0, 1, 2, 3 완료, Phase 4 일부 완료)
+- **마지막 업데이트**: 2025-07-31
 
 ---
 
@@ -466,9 +466,39 @@
 - **완료 일자**: 2025-07-30 (REFACTOR 단계까지 완료)
 - **Phase 3 최종 상태**: 스터디 그룹 관리 기능 완전 구현 완료
 
-## 🎯 **다음 우선순위** (Phase 4)
+## ✅ **Phase 4: 코드 품질 및 분석 기능** (진행중 🚀)
 
-**Phase 3 완료!** 이제 Phase 4로 진행합니다.
+### **Task 4-0: 코드 품질 인프라 구축** ✅ **완료** (2025-07-31)
+
+#### **4-0-1~3: JaCoCo 코드 커버리지 도입 및 테스트 품질 개선** ✅ **완료**
+- **완료 내용**:
+  - **JaCoCo 플러그인 설정**: build.gradle.kts에 JaCoCo 통합, HTML/XML 리포트 생성
+  - **코드 커버리지 품질 게이트**: Branch Coverage 75%, Line Coverage 80% 최소 기준 설정
+  - **테스트 자동 검증**: 테스트 실행 시 커버리지 자동 측정 및 리포트 생성
+  - **OutboxEventHandlerTest 수정**: Spring Boot 테스트 컨텍스트 적용으로 @Transactional 문제 해결
+    - `@SpringBootTest`, `@ActiveProfiles("test")`, `@Transactional` 어노테이션 추가
+    - `SpringExtension` 사용으로 Spring 컨텍스트 활성화
+    - 모든 mock 검증이 정상 작동하도록 수정 (6개 테스트 실패 → 모두 통과)
+
+- **성과**:
+  - **테스트 안정성 향상**: @Transactional 문제로 실패하던 6개 테스트 모두 통과
+  - **코드 품질 가시화**: JaCoCo 리포트로 커버리지 현황 실시간 확인 가능
+  - **품질 게이트 도입**: 자동화된 코드 품질 검증 시스템 구축
+
+- **커밋 내역**:
+  - `test: JaCoCo 코드 커버리지 도입 및 누락 테스트 추가` (c736efb)
+
+## 📈 **Phase 4 진행률**
+
+- **전체 진행률**: 30% (Task 4-0 완료, Task 4-1, 4-2, 4-3 대기)
+- **현재 상태**: 코드 품질 인프라 구축 완료, ANALYSIS_UPDATE_SAGA 준비 완료
+- **완료 일자**: 2025-07-31 (Task 4-0 완료)
+
+---
+
+## 🎯 **다음 우선순위** (Phase 4 계속)
+
+**Task 4-0 완료!** 이제 Phase 4의 핵심 SAGA 구현으로 진행합니다.
 
 1. **ANALYSIS_UPDATE_SAGA 구현**: 데이터 분석 및 업데이트 SAGA 🚀 **다음 작업**
 2. **PERSONAL_STATS_REFRESH_SAGA**: 개인 통계 갱신 SAGA

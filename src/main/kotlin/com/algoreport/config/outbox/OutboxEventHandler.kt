@@ -60,12 +60,18 @@ class OutboxEventHandler(
             // 이벤트별 비즈니스 로직 처리
             processBusinessLogic(topic, eventData, sagaId, aggregateType)
             
-            // Outbox 테이블에서 처리 완료 마킹
-            eventId?.let { id ->
-                markEventAsProcessed(UUID.fromString(id))
-            }
-            
             logger.info("Successfully processed outbox event: topic={}, eventId={}", topic, eventId)
+            
+            // Outbox 테이블에서 처리 완료 마킹 (실패해도 전체 처리에는 영향 없음)
+            eventId?.let { id ->
+                try {
+                    markEventAsProcessed(UUID.fromString(id))
+                } catch (ex: Exception) {
+                    // markEventAsProcessed 내부에서 이미 예외를 처리하지만, 
+                    // UUID 파싱 오류 등이 발생할 수 있으므로 여기서도 안전장치 추가
+                    logger.warn("Failed to process event ID: {}", id, ex)
+                }
+            }
             
         } catch (ex: Exception) {
             logger.error("Failed to process outbox event: topic={}, eventId={}", topic, eventId, ex)

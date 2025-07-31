@@ -59,6 +59,7 @@ class StudyGroupService(
 ### 2.3 Kotest BehaviorSpec 사용 규칙 (필수)
 
 **🚨 중요: 모든 테스트는 Kotest BehaviorSpec을 사용합니다** (JUnit 5 금지)
+**🔥 주의: 아래 데이터 생명주기 규칙을 지키지 않으면 100% 테스트 실패합니다!**
 
 #### **Kotest BehaviorSpec 실행 순서 및 데이터 생명주기 (필수 숙지)**
 
