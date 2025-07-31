@@ -1,4 +1,4 @@
-package com.algoreport.module.user
+package com.algoreport.config.outbox
 
 import com.algoreport.config.outbox.OutboxEvent
 import org.springframework.stereotype.Service

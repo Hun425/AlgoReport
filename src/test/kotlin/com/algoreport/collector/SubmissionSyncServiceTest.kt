@@ -16,7 +16,7 @@ import java.util.*
 class SubmissionSyncServiceTest : BehaviorSpec({
     
     given("SubmissionSyncServiceImpl") {
-        val submissionSyncService: SubmissionSyncServiceImpl = SubmissionSyncServiceImpl()
+        val submissionSyncService = SubmissionSyncServiceImpl()
         
         beforeEach {
             submissionSyncService.clear()
@@ -44,12 +44,11 @@ class SubmissionSyncServiceTest : BehaviorSpec({
         }
         
         `when`("사용자 핸들을 설정한 후 조회할 때") {
-            val userId = UUID.randomUUID()
-            val expectedHandle = "customuser123"
-            
-            submissionSyncService.setUserHandle(userId, expectedHandle)
-            
             then("설정한 핸들을 반환해야 한다") {
+                val userId = UUID.randomUUID()
+                val expectedHandle = "customuser123"
+                
+                submissionSyncService.setUserHandle(userId, expectedHandle)
                 val actualHandle = submissionSyncService.getUserHandle(userId)
                 actualHandle shouldBe expectedHandle
             }
@@ -69,31 +68,30 @@ class SubmissionSyncServiceTest : BehaviorSpec({
         }
         
         `when`("마지막 동기화 시간을 업데이트할 때") {
-            val userId = UUID.randomUUID()
-            val syncTime = LocalDateTime.now().minusMinutes(30)
-            
-            submissionSyncService.updateLastSyncTime(userId, syncTime)
-            
             then("업데이트된 시간을 반환해야 한다") {
+                val userId = UUID.randomUUID()
+                val syncTime = LocalDateTime.now().minusMinutes(30)
+                
+                submissionSyncService.updateLastSyncTime(userId, syncTime)
                 val retrievedTime = submissionSyncService.getLastSyncTime(userId)
                 retrievedTime shouldBe syncTime
             }
         }
         
         `when`("여러 사용자의 핸들과 동기화 시간을 관리할 때") {
-            val user1Id = UUID.randomUUID()
-            val user2Id = UUID.randomUUID()
-            val user1Handle = "user1handle"
-            val user2Handle = "user2handle"
-            val user1SyncTime = LocalDateTime.now().minusHours(2)
-            val user2SyncTime = LocalDateTime.now().minusMinutes(30)
-            
-            submissionSyncService.setUserHandle(user1Id, user1Handle)
-            submissionSyncService.setUserHandle(user2Id, user2Handle)
-            submissionSyncService.updateLastSyncTime(user1Id, user1SyncTime)
-            submissionSyncService.updateLastSyncTime(user2Id, user2SyncTime)
-            
             then("각 사용자의 데이터가 독립적으로 관리되어야 한다") {
+                val user1Id = UUID.randomUUID()
+                val user2Id = UUID.randomUUID()
+                val user1Handle = "user1handle"
+                val user2Handle = "user2handle"
+                val user1SyncTime = LocalDateTime.now().minusHours(2)
+                val user2SyncTime = LocalDateTime.now().minusMinutes(30)
+                
+                submissionSyncService.setUserHandle(user1Id, user1Handle)
+                submissionSyncService.setUserHandle(user2Id, user2Handle)
+                submissionSyncService.updateLastSyncTime(user1Id, user1SyncTime)
+                submissionSyncService.updateLastSyncTime(user2Id, user2SyncTime)
+                
                 submissionSyncService.getUserHandle(user1Id) shouldBe user1Handle
                 submissionSyncService.getUserHandle(user2Id) shouldBe user2Handle
                 submissionSyncService.getLastSyncTime(user1Id) shouldBe user1SyncTime
@@ -129,28 +127,28 @@ class SubmissionSyncServiceTest : BehaviorSpec({
         }
         
         `when`("동일한 사용자의 핸들을 여러 번 설정할 때") {
-            val userId = UUID.randomUUID()
-            val firstHandle = "firsthandle"
-            val secondHandle = "secondhandle"
-            
-            submissionSyncService.setUserHandle(userId, firstHandle)
-            submissionSyncService.setUserHandle(userId, secondHandle)
-            
             then("마지막에 설정한 핸들이 반환되어야 한다") {
+                val userId = UUID.randomUUID()
+                val firstHandle = "firsthandle"
+                val secondHandle = "secondhandle"
+                
+                submissionSyncService.setUserHandle(userId, firstHandle)
+                submissionSyncService.setUserHandle(userId, secondHandle)
+                
                 val actualHandle = submissionSyncService.getUserHandle(userId)
                 actualHandle shouldBe secondHandle
             }
         }
         
         `when`("동일한 사용자의 동기화 시간을 여러 번 업데이트할 때") {
-            val userId = UUID.randomUUID()
-            val firstTime = LocalDateTime.now().minusHours(3)
-            val secondTime = LocalDateTime.now().minusMinutes(45)
-            
-            submissionSyncService.updateLastSyncTime(userId, firstTime)
-            submissionSyncService.updateLastSyncTime(userId, secondTime)
-            
             then("마지막에 업데이트한 시간이 반환되어야 한다") {
+                val userId = UUID.randomUUID()
+                val firstTime = LocalDateTime.now().minusHours(3)
+                val secondTime = LocalDateTime.now().minusMinutes(45)
+                
+                submissionSyncService.updateLastSyncTime(userId, firstTime)
+                submissionSyncService.updateLastSyncTime(userId, secondTime)
+                
                 val actualTime = submissionSyncService.getLastSyncTime(userId)
                 actualTime shouldBe secondTime
             }
