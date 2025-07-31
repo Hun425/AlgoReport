@@ -46,7 +46,7 @@ class RateLimitAwareBatchServiceImpl(
         
         return if (retryResult.successful && retryResult.result != null) {
             val submissions = retryResult.result as SubmissionList
-            val collectedCount = minOf(submissions.items.size, batchSize)
+            val collectedCount = minOf(submissions.count, batchSize)
             
             logger.info("Successfully collected batch {} with {} submissions (attempts: {})", 
                        batchNumber, collectedCount, retryResult.totalAttempts)
