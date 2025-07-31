@@ -173,19 +173,36 @@
 **우선순위**: 🟡 **Important** (부가가치 기능)
 **현재 상태**: 대기중 ⏳
 
-### 📋 **SAGA 기반 세부 작업**
+### 📋 **세부 작업 항목**
+
+#### **4.0 코드 품질 인프라 구축** 🔧 **신규 추가**
+- [ ] **Task 4-0-1**: JaCoCo 코드 커버리지 도구 도입
+  - build.gradle.kts에 JaCoCo 플러그인 설정
+  - HTML/XML 리포트 생성 설정
+- [ ] **Task 4-0-2**: 코드 커버리지 품질 게이트 설정
+  - Branch Coverage 75% 최소 기준
+  - Line Coverage 80% 최소 기준
+  - 테스트 실행 시 자동 검증
+- [ ] **Task 4-0-3**: 기존 코드 커버리지 현황 측정
+  - Phase 0-3 완료 코드 커버리지 측정
+  - 커버리지 리포트 생성 및 분석
 
 #### **4.1 ANALYSIS_UPDATE_SAGA 구현**
 - [ ] **Task 4-1-1**: [RED] 정기 분석 업데이트 테스트
 - [ ] **Task 4-1-2**: [GREEN] 대용량 데이터 분석 구현
 - [ ] **Task 4-1-3**: [REFACTOR] 성능 최적화
 
-#### **4.2 대시보드 및 추천 API**
-- [ ] **Task 4-2-1**: 개인 학습 대시보드 API
-- [ ] **Task 4-2-2**: 맞춤 문제 추천 API
-- [ ] **Task 4-2-3**: 스터디 그룹 대시보드 API
+#### **4.2 PERSONAL_STATS_REFRESH_SAGA 구현** 📊 **신규 추가**
+- [ ] **Task 4-2-1**: [RED] 개인 통계 갱신 테스트
+- [ ] **Task 4-2-2**: [GREEN] Elasticsearch 집계 쿼리 구현
+- [ ] **Task 4-2-3**: [REFACTOR] 캐시 최적화
 
-**예상 소요시간**: 5-6일
+#### **4.3 대시보드 및 추천 API**
+- [ ] **Task 4-3-1**: 개인 학습 대시보드 API
+- [ ] **Task 4-3-2**: 맞춤 문제 추천 API
+- [ ] **Task 4-3-3**: 스터디 그룹 대시보드 API
+
+**예상 소요시간**: 6-8일 (JaCoCo 도입 포함)
 
 ---
 
@@ -214,12 +231,17 @@
 ### **🎉 Phase 3 완료! 이제 Phase 4로 진행** ✅
 
 ### **즉시 시작 가능한 작업** (Phase 4)
-1. **ANALYSIS_UPDATE_SAGA 구현** 🚀 **다음 작업**
+1. **JaCoCo 코드 커버리지 도입** 🔧 **다음 작업** (우선순위 1)
+   - build.gradle.kts 설정 및 플러그인 추가
+   - Branch Coverage 75%, Line Coverage 80% 품질 게이트
+   - 기존 코드 커버리지 현황 측정
+
+2. **ANALYSIS_UPDATE_SAGA 구현** 🚀 **우선순위 2**
    - [RED] 정기 분석 업데이트 테스트 작성
    - [GREEN] 대용량 데이터 분석 구현  
    - [REFACTOR] 성능 최적화
 
-2. **PERSONAL_STATS_REFRESH_SAGA 구현** 📊 
+3. **PERSONAL_STATS_REFRESH_SAGA 구현** 📊 **우선순위 3**
    - 개인 통계 갱신 및 캐시 업데이트
    - Elasticsearch 집계 쿼리 최적화
 
