@@ -6,6 +6,20 @@
 
 ## 🏗️ **구현 아키텍처**
 
+### **Saga 분류 및 선택 가이드 (신규 설계 원칙)**
+
+**중요**: 모든 분산 트랜잭션을 Saga 패턴으로 구현할 필요는 없습니다. 아래 가이드에 따라 적절한 패턴을 선택합니다.
+
+- **언제 Saga를 사용하는가? (Critical Saga)**
+  - **조건**: 여러 모듈에 걸쳐 데이터가 변경되며, **중간 단계 실패 시 반드시 이전 단계의 작업이 롤백(보상)되어야 하는 경우**에만 사용합니다.
+  - **예시**: `USER_REGISTRATION_SAGA` (사용자 생성 실패 시 분석 프로필, 알림 설정도 생성되면 안 됨), `JOIN_GROUP_SAGA` (멤버 추가 실패 시 그룹 정원 예약 등 롤백 필요)
+
+- **언제 단순 이벤트를 사용하는가? (Simple Event)**
+  - **조건**: **롤백이 불필요한** 정보 동기화나 부가 기능 호출 시 사용합니다. Producer는 자신의 작업을 완료하고 이벤트를 발행하면 책임이 끝납니다. Consumer는 알아서 정보를 동기화합니다.
+  - **예시**: `USER_PROFILE_UPDATE_SAGA` (프로필 업데이트 후 알림 모듈 동기화 실패가 프로필 업데이트 자체를 롤백시킬 필요 없음), `DISCUSSION_CREATE_SAGA` (토론 생성 후 알림 실패가 토론 삭제로 이어질 필요 없음)
+
+**[리팩토링 계획]** 현재 설계된 Saga 중 일부는 **Simple Event** 방식으로 전환하여 시스템 복잡성을 낮출 예정입니다. (Phase 6 참조)
+
 ### **핵심 컴포넌트 구조**
 
 ```kotlin
@@ -1064,333 +1078,40 @@ class SagaPerformanceTest {
 
 ---
 
-## 📊 **모니터링 및 운영**
+## 📊 **모니터링 및 운영 (신규 전략: Elastic APM)**
 
-### **1. Saga 메트릭 수집**
+**핵심 전략 변경**: 기존의 `SAGA_INSTANCES` 테이블을 이용한 상태 추적 방식에서, **Elastic APM을 활용한 분산 추적(Distributed Tracing)** 방식으로 전환합니다. 이 방식은 더 적은 코드 침투로 더 강력한 관측 가능성을 제공합니다.
 
-```kotlin
-@Component
-class SagaMetrics {
-    
-    private val sagaStartedCounter = Counter.build()
-        .name("saga_started_total")
-        .help("Total number of sagas started")
-        .labelNames("saga_type")
-        .register()
-    
-    private val sagaCompletedCounter = Counter.build()
-        .name("saga_completed_total")
-        .help("Total number of sagas completed")
-        .labelNames("saga_type")
-        .register()
-    
-    private val sagaFailedCounter = Counter.build()
-        .name("saga_failed_total")
-        .help("Total number of sagas failed")
-        .labelNames("saga_type", "failed_step")
-        .register()
-    
-    private val sagaCompensatedCounter = Counter.build()
-        .name("saga_compensated_total")
-        .help("Total number of sagas compensated")
-        .labelNames("saga_type")
-        .register()
-    
-    private val sagaDurationHistogram = Histogram.build()
-        .name("saga_duration_seconds")
-        .help("Saga execution duration in seconds")
-        .labelNames("saga_type")
-        .buckets(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0)
-        .register()
-    
-    private val activeSagasGauge = Gauge.build()
-        .name("saga_active_instances")
-        .help("Number of currently active saga instances")
-        .labelNames("saga_type")
-        .register()
-    
-    fun incrementSagaStarted(sagaType: String) {
-        sagaStartedCounter.labels(sagaType).inc()
-    }
-    
-    fun incrementSagaCompleted(sagaType: String, durationSeconds: Double) {
-        sagaCompletedCounter.labels(sagaType).inc()
-        sagaDurationHistogram.labels(sagaType).observe(durationSeconds)
-    }
-    
-    fun incrementSagaFailed(sagaType: String, failedStep: String) {
-        sagaFailedCounter.labels(sagaType, failedStep).inc()
-    }
-    
-    fun incrementSagaCompensated(sagaType: String) {
-        sagaCompensatedCounter.labels(sagaType).inc()
-    }
-    
-    fun updateActiveSagas(sagaType: String, count: Double) {
-        activeSagasGauge.labels(sagaType).set(count)
-    }
-}
+### **1. 분산 추적을 통한 Saga 모니터링**
 
-@Component
-class SagaMetricsCollector(
-    private val sagaRepository: SagaInstanceRepository,
-    private val sagaMetrics: SagaMetrics
-) {
-    
-    @Scheduled(fixedDelay = 30000) // 30초마다
-    fun updateActiveSagaMetrics() {
-        val sagaTypeCounts = sagaRepository.countActiveSagasByType()
-        
-        sagaTypeCounts.forEach { (sagaType, count) ->
-            sagaMetrics.updateActiveSagas(sagaType, count.toDouble())
-        }
-    }
+- **Trace ID (Correlation ID)**: APM 에이전트가 모든 비즈니스 트랜잭션의 시작점에서 고유한 `Trace ID`를 생성합니다. 이 ID는 모든 이벤트와 모듈 간 호출에 걸쳐 자동으로 전파됩니다.
+- **Spans**: 각 모듈에서 수행되는 작업(DB 쿼리, 이벤트 발행 등)은 `Span`으로 측정되어 `Trace ID`에 연결됩니다.
+- **시각화**: Kibana APM 대시보드에서 전체 트랜잭션 흐름을 폭포수(Waterfall) 차트로 시각화하여 볼 수 있습니다. 이를 통해 어떤 단계에서 병목이 발생하거나 실패했는지 직관적으로 파악할 수 있습니다.
+
+### **2. 주요 모니터링 시나리오**
+
+- **성공한 Saga 흐름 분석**: Kibana에서 특정 `Trace ID`를 검색하여, `USER_REGISTERED` 이벤트부터 `WELCOME_NOTIFICATION_SENT` 이벤트까지 전체 흐름과 각 단계별 소요 시간을 확인합니다.
+- **실패한 Saga 추적**: 에러가 발생한 트랜잭션을 필터링하고, 어떤 `Span`에서 예외가 발생했는지, 당시의 컨텍스트(파라미터, 쿼리 등)는 무엇이었는지 상세히 분석합니다.
+- **성능 병목 식별**: 트랜잭션 목록에서 평균 소요 시간이 가장 긴 트랜잭션을 찾아내고, 내부 Span들을 분석하여 DB 쿼리가 느린지, 특정 로직이 오래 걸리는지 등을 파악합니다.
+
+### **3. 로그와 추적 데이터의 연동**
+
+APM 에이전트는 모든 로그 메시지에 `trace.id`와 `transaction.id`를 자동으로 추가합니다. 이를 통해 다음과 같은 강력한 분석이 가능해집니다.
+
+```json
+// Kibana에서 볼 수 있는 로그 예시
+{
+  "@timestamp": "2025-07-24T10:30:00.123Z",
+  "log.level": "ERROR",
+  "message": "Failed to process event ANALYSIS_PROFILE_CREATED",
+  "service.name": "algoreport-backend",
+  "trace.id": "a1b2c3d4e5f6...", // <-- 이 ID로 전체 흐름 추적
+  "transaction.id": "f6e5d4c3b2a1...",
+  "error.message": "User not found in cache"
 }
 ```
 
-### **2. Saga 대시보드 API**
-
-```kotlin
-@RestController
-@RequestMapping("/admin/sagas")
-class SagaMonitoringController(
-    private val sagaRepository: SagaInstanceRepository,
-    private val sagaCoordinator: SagaCoordinator
-) {
-    
-    @GetMapping("/status")
-    fun getSagaOverview(): SagaOverviewResponse {
-        val totalSagas = sagaRepository.count()
-        val activeSagas = sagaRepository.countByStatus(SagaStatus.IN_PROGRESS)
-        val failedSagas = sagaRepository.countByStatus(SagaStatus.FAILED)
-        val compensatedSagas = sagaRepository.countByStatus(SagaStatus.COMPENSATED)
-        
-        val sagaTypeStats = sagaRepository.getSagaStatsByType()
-        
-        return SagaOverviewResponse(
-            totalSagas = totalSagas,
-            activeSagas = activeSagas,
-            failedSagas = failedSagas,
-            compensatedSagas = compensatedSagas,
-            sagaTypeStats = sagaTypeStats
-        )
-    }
-    
-    @GetMapping("/failed")
-    fun getFailedSagas(
-        @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int
-    ): Page<FailedSagaInfo> {
-        return sagaRepository.findFailedSagas(PageRequest.of(page, size))
-            .map { saga ->
-                FailedSagaInfo(
-                    sagaId = saga.sagaId,
-                    sagaType = saga.sagaType,
-                    failedStep = saga.failedStep,
-                    errorMessage = saga.errorMessage,
-                    failedAt = saga.updatedAt,
-                    correlationData = objectMapper.readValue<Map<String, Any>>(saga.correlationData)
-                )
-            }
-    }
-    
-    @GetMapping("/{sagaId}")
-    fun getSagaDetails(@PathVariable sagaId: UUID): SagaDetailResponse {
-        val saga = sagaRepository.findById(sagaId)
-            ?: throw SagaNotFoundException("Saga not found: $sagaId")
-        
-        val outboxEvents = outboxRepository.findBySagaId(sagaId)
-        val stepHistory = objectMapper.readValue<List<Map<String, Any>>>(saga.stepHistory)
-        
-        return SagaDetailResponse(
-            sagaId = saga.sagaId,
-            sagaType = saga.sagaType,
-            status = saga.sagaStatus,
-            currentStep = saga.currentStep,
-            completedSteps = objectMapper.readValue<List<String>>(saga.completedSteps),
-            failedStep = saga.failedStep,
-            errorMessage = saga.errorMessage,
-            startedAt = saga.startedAt,
-            updatedAt = saga.updatedAt,
-            stepHistory = stepHistory,
-            relatedEvents = outboxEvents.map { event ->
-                EventSummary(
-                    eventId = event.eventId,
-                    eventType = event.eventType,
-                    processed = event.processed,
-                    createdAt = event.createdAt
-                )
-            }
-        )
-    }
-    
-    @PostMapping("/{sagaId}/retry")
-    fun retrySaga(@PathVariable sagaId: UUID): ResponseEntity<String> {
-        val saga = sagaRepository.findById(sagaId)
-            ?: return ResponseEntity.notFound().build()
-        
-        if (saga.sagaStatus != SagaStatus.FAILED) {
-            return ResponseEntity.badRequest().body("Saga is not in FAILED status")
-        }
-        
-        // 실패한 단계부터 재시작
-        saga.sagaStatus = SagaStatus.IN_PROGRESS
-        saga.errorMessage = null
-        saga.updatedAt = LocalDateTime.now()
-        
-        sagaRepository.save(saga)
-        
-        // 재시도 이벤트 발행
-        val retryEventData = mapOf(
-            "sagaId" to saga.sagaId,
-            "sagaType" to saga.sagaType,
-            "retryFromStep" to saga.failedStep
-        )
-        
-        outboxRepository.save(OutboxEvent(
-            aggregateType = "SAGA",
-            aggregateId = sagaId.toString(),
-            eventType = "${saga.sagaType}_RETRY",
-            eventData = objectMapper.writeValueAsString(retryEventData),
-            sagaId = sagaId,
-            sagaType = saga.sagaType
-        ))
-        
-        return ResponseEntity.ok("Saga retry initiated")
-    }
-}
-
-data class SagaOverviewResponse(
-    val totalSagas: Long,
-    val activeSagas: Long,
-    val failedSagas: Long,
-    val compensatedSagas: Long,
-    val sagaTypeStats: List<SagaTypeStat>
-)
-
-data class SagaTypeStat(
-    val sagaType: String,
-    val total: Long,
-    val active: Long,
-    val completed: Long,
-    val failed: Long,
-    val averageDurationMinutes: Double,
-    val successRate: Double
-)
-```
-
-### **3. 알림 및 자동 복구**
-
-```kotlin
-@Component
-class SagaHealthMonitor(
-    private val sagaRepository: SagaInstanceRepository,
-    private val alertingService: AlertingService,
-    private val autoRecoveryService: AutoRecoveryService
-) {
-    
-    @Scheduled(fixedDelay = 300000) // 5분마다
-    fun monitorSagaHealth() {
-        checkLongRunningSagas()
-        checkHighFailureRate()
-        checkStuckSagas()
-    }
-    
-    private fun checkLongRunningSagas() {
-        val longRunningSagas = sagaRepository.findLongRunningSagas(
-            since = LocalDateTime.now().minusHours(1)
-        )
-        
-        if (longRunningSagas.isNotEmpty()) {
-            alertingService.sendWarning(
-                "Long Running Sagas Detected",
-                "Found ${longRunningSagas.size} sagas running for more than 1 hour"
-            )
-        }
-    }
-    
-    private fun checkHighFailureRate() {
-        val recentFailureRate = sagaRepository.calculateFailureRate(
-            since = LocalDateTime.now().minusHours(1)
-        )
-        
-        if (recentFailureRate > 0.1) { // 10% 초과
-            alertingService.sendCritical(
-                "High Saga Failure Rate",
-                "Saga failure rate in the last hour: ${recentFailureRate * 100}%"
-            )
-        }
-    }
-    
-    private fun checkStuckSagas() {
-        val stuckSagas = sagaRepository.findStuckSagas(
-            since = LocalDateTime.now().minusMinutes(30)
-        )
-        
-        stuckSagas.forEach { saga ->
-            when (saga.sagaType) {
-                "USER_REGISTRATION_SAGA", "CREATE_GROUP_SAGA" -> {
-                    // 중요한 Saga는 자동 복구 시도
-                    autoRecoveryService.attemptRecovery(saga)
-                }
-                else -> {
-                    // 일반 Saga는 알림만
-                    alertingService.sendInfo(
-                        "Stuck Saga Detected",
-                        "Saga ${saga.sagaId} of type ${saga.sagaType} appears to be stuck"
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Service
-class AutoRecoveryService(
-    private val sagaRepository: SagaInstanceRepository,
-    private val outboxRepository: OutboxEventRepository
-) {
-    
-    fun attemptRecovery(saga: SagaInstance) {
-        logger.info("Attempting auto recovery for saga: {} of type: {}", saga.sagaId, saga.sagaType)
-        
-        when (saga.sagaType) {
-            "USER_REGISTRATION_SAGA" -> recoverUserRegistrationSaga(saga)
-            "JOIN_GROUP_SAGA" -> recoverJoinGroupSaga(saga)
-            // 다른 Saga 타입들...
-        }
-    }
-    
-    private fun recoverUserRegistrationSaga(saga: SagaInstance) {
-        val completedSteps = objectMapper.readValue<List<String>>(saga.completedSteps)
-        
-        when {
-            !completedSteps.contains("ANALYSIS_PROFILE_CREATED") -> {
-                // 분석 프로필 생성 단계가 누락된 경우 재시도 이벤트 발행
-                republishEvent(saga, "USER_REGISTERED")
-            }
-            !completedSteps.contains("WELCOME_NOTIFICATION_SENT") -> {
-                // 알림 발송이 누락된 경우 재시도
-                republishEvent(saga, "USER_REGISTERED")
-            }
-        }
-    }
-    
-    private fun republishEvent(saga: SagaInstance, eventType: String) {
-        val correlationData = objectMapper.readValue<Map<String, Any>>(saga.correlationData)
-        
-        outboxRepository.save(OutboxEvent(
-            aggregateType = "RECOVERY",
-            aggregateId = saga.sagaId.toString(),
-            eventType = eventType,
-            eventData = objectMapper.writeValueAsString(correlationData),
-            sagaId = saga.sagaId,
-            sagaType = saga.sagaType
-        ))
-        
-        logger.info("Republished {} event for saga recovery: {}", eventType, saga.sagaId)
-    }
-}
+> 특정 에러 로그를 발견하면, `trace.id`를 클릭하는 것만으로 해당 에러가 발생한 전체 분산 트랜잭션의 타임라인으로 즉시 이동할 수 있습니다.
 ```
 
 ---

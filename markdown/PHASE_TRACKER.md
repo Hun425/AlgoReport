@@ -237,6 +237,53 @@
 
 ## Phase 5: 프론트엔드 개발 (완료율: 0%)
 
+---
+
+## Phase 6: Saga 리팩토링 및 분산 추적 시스템 구축 (신규)
+
+**목표**: 불필요하게 복잡한 Saga를 단순 이벤트 모델로 전환하고, Elastic APM을 도입하여 시스템의 복잡성을 낮추고 관측 가능성(Observability)을 극대화한다.
+**우선순위**: 🟡 **Important** (시스템 안정성 및 유지보수성 향상)
+**현재 상태**: 계획 수립 완료 📝
+
+### 📋 **세부 작업 항목**
+- [ ] **Task 6-0**: Elastic APM을 이용한 분산 추적 시스템 구축
+  - [ ] [Infra] `docker-compose.yml`에 Elastic APM Server 추가
+  - [ ] [Chore] `build.gradle.kts`에 Elastic APM Agent 의존성 추가
+  - [ ] [Config] `application.yml`에 APM 설정 추가
+  - [ ] [Verify] Kibana APM 대시보드에서 분산 추적 데이터 수집 확인
+- [ ] **Task 6-1**: `USER_PROFILE_UPDATE_SAGA` 리팩토링
+  - [ ] [RED] 테스트 재정의 (단순 이벤트 발행 검증)
+  - [ ] [GREEN] Saga 로직 제거 및 단순 이벤트 발행으로 전환
+  - [ ] [REFACTOR] 구독자(Consumer) 로직 강화
+- [ ] **Task 6-2**: `DISCUSSION_CREATE_SAGA` 리팩토링
+  - [ ] [RED] 테스트 재정의
+  - [ ] [GREEN] Saga 로직 제거
+  - [ ] [REFACTOR] 구독자 로직 개선
+- [ ] **Task 6-3**: `PERSONAL_STATS_REFRESH_SAGA` 리팩토링
+  - [ ] [RED] 단계별 이벤트 체인 테스트 재정의
+  - [ ] [GREEN] Saga를 이벤트 체인(Chain of Events) 구조로 분리
+  - [ ] [REFACTOR] 각 단계의 독립성 및 오류 처리 강화
+
+## Phase 6: Saga 리팩토링 및 아키텍처 경량화 (신규)
+
+**목표**: 불필요하게 복잡한 Saga 패턴을 단순 이벤트 기반 아키텍처로 전환하여 시스템의 복잡성을 낮추고, 모듈 간 결합도를 줄이며, 유지보수성을 향상시킨다.
+**우선순위**: 🟡 **Important** (시스템 안정성 및 유지보수성 향상)
+**현재 상태**: 계획 수립 완료 📝
+
+### 📋 **세부 작업 항목**
+- [ ] **Task 6-1**: `USER_PROFILE_UPDATE_SAGA` 리팩토링
+  - [ ] [RED] 테스트 재정의
+  - [ ] [GREEN] Saga 로직 제거 및 단순 이벤트 발행
+  - [ ] [REFACTOR] 구독자 로직 강화
+- [ ] **Task 6-2**: `DISCUSSION_CREATE_SAGA` 리팩토링
+  - [ ] [RED] 테스트 재정의
+  - [ ] [GREEN] Saga 로직 제거
+  - [ ] [REFACTOR] 구독자 로직 개선
+- [ ] **Task 6-3**: `PERSONAL_STATS_REFRESH_SAGA` 리팩토링
+  - [ ] [RED] 단계별 테스트 재정의
+  - [ ] [GREEN] Saga를 이벤트 체인으로 분리
+  - [ ] [REFACTOR] 각 단계의 독립성 강화
+
 **목표**: React + Next.js 웹 애플리케이션을 통한 사용자 인터페이스를 완성합니다.
 **우선순위**: 🟢 **Nice to have** (UI/UX)
 **현재 상태**: 대기중 ⏳

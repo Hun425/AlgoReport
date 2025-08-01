@@ -439,6 +439,44 @@ class UserRegistrationSagaTest {
 
 ### **4.3 Saga 테스트 헬퍼**
 
+### **4.4 단순 이벤트 테스트 전략 (신규)**
+
+Saga가 아닌 단순 이벤트 발행/구독 모델을 테스트할 때는 보상 트랜잭션을 검증할 필요가 없으므로, 테스트가 더 간단해집니다.
+
+```kotlin
+@UnitTest
+class UserProfileUpdateEventTest {
+
+    @Test
+    fun `프로필 업데이트 시 USER_PROFILE_UPDATED 이벤트가 발행되어야 한다`() {
+        // Given: 사용자 프로필 변경 요청
+        val request = UpdateProfileRequest(nickname = "새 닉네임")
+        
+        // When: 프로필 업데이트 실행
+        userService.updateProfile(userId, request)
+        
+        // Then: Outbox에 정확한 이벤트가 저장되었는지 검증
+        val outboxEvent = outboxRepository.findLastByAggregateId(userId)
+        assertThat(outboxEvent.eventType).isEqualTo("USER_PROFILE_UPDATED")
+        val eventData = objectMapper.readValue<ProfileUpdatedEventData>(outboxEvent.eventData)
+        assertThat(eventData.changes["nickname"]!!.newValue).isEqualTo("새 닉네임")
+    }
+
+    @Test
+    fun `이벤트 구독자가 독립적으로 데이터를 동기화해야 한다`() {
+        // Given: USER_PROFILE_UPDATED 이벤트
+        val event = createUserProfileUpdatedEvent()
+
+        // When: StudyGroup 모듈의 이벤트 핸들러 실행
+        studyGroupEventHandler.handleUserProfileUpdated(event)
+
+        // Then: StudyGroup 모듈의 DB에만 변경 사항이 반영되었는지 확인
+        val memberProfile = groupMemberRepository.findByUserId(event.userId)
+        assertThat(memberProfile.nickname).isEqualTo(event.newNickname)
+    }
+}
+```
+
 ```kotlin
 class SagaTestDSL {
     private lateinit var sagaId: UUID
