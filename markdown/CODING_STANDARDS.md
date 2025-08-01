@@ -264,6 +264,81 @@ chore: 빌드 설정 등
 
 ## 6. 테스트 전략: 단위 테스트 vs 통합 테스트
 
+---
+
+## 7. Spring 환경에서의 Coroutine 사용 가이드 (신규)
+
+**배경**: 우리 프로젝트는 Java 21의 강력한 기능과 함께 Kotlin Coroutines를 적극적으로 활용하여 높은 동시성과 성능을 추구합니다. 하지만 Spring의 스레드 기반 모델과 코루틴의 논블로킹 모델을 함께 사용할 때는 몇 가지 중요한 규칙을 반드시 지켜야 합니다.
+
+### **7.1 핵심 원칙: 블로킹 호출 격리**
+
+**절대 원칙**: `suspend` 함수 내에서 또는 코루틴 스코프(`viewModelScope`, `liveData` 등) 내에서 일반적인 블로킹 I/O 작업을 직접 호출해서는 안 됩니다. 이는 코루틴을 실행하는 스레드를 차단하여, 수천 개의 코루틴을 동시에 실행할 수 있는 코루틴의 장점을 무력화시킵니다.
+
+- **블로킹 I/O 작업의 예:**
+  - 일반적인 Spring Data JPA의 Repository 메서드 호출 (예: `userRepository.findById(1L)`)
+  - `RestTemplate`을 사용한 API 호출
+  - `java.io.File`을 사용한 파일 읽기/쓰기
+
+### **7.2 규칙: `withContext(Dispatchers.IO)` 사용**
+
+블로킹 I/O 작업을 반드시 수행해야 할 경우, 해당 코드를 **반드시 `withContext(Dispatchers.IO)` 블록으로 감싸야 합니다.**
+
+- **`Dispatchers.IO`란?** 블로킹 I/O 작업 전용으로 설계된 스레드 풀입니다. 이 디스패처를 사용하면, 메인 스레드나 다른 중요한 코루틴 스레드를 차단하지 않고 안전하게 블로킹 작업을 수행할 수 있습니다.
+
+```kotlin
+// ❌ 잘못된 예: 코루틴 스레드를 차단하여 시스템 전체 성능 저하
+@Service
+class BadCoroutineService(private val userRepository: UserRepository) {
+    suspend fun getUserProfile(userId: Long): UserProfile {
+        // 이 코드는 코루틴을 실행하는 스레드를 직접 차단합니다.
+        val user = userRepository.findById(userId).orElse(null) 
+        return createProfileFrom(user)
+    }
+}
+
+// ✅ 올바른 예: 블로킹 작업을 IO 스레드 풀에 위임
+@Service
+class GoodCoroutineService(private val userRepository: UserRepository) {
+    suspend fun getUserProfile(userId: Long): UserProfile {
+        // withContext를 사용하여 블로킹 작업을 안전하게 격리합니다.
+        val user = withContext(Dispatchers.IO) {
+            userRepository.findById(userId).orElse(null)
+        }
+        return createProfileFrom(user)
+    }
+}
+```
+
+### **7.3 권장 사항: 반응형(Reactive) 라이브러리 도입 고려**
+
+장기적으로는 블로킹 I/O 자체를 줄이는 것이 가장 좋습니다. 이를 위해 Spring WebFlux, R2DBC 등 반응형 프로그래밍 스택의 도입을 고려할 수 있습니다.
+
+- **Spring Data R2DBC:** 논블로킹 방식으로 데이터베이스와 통신하는 라이브러리입니다. `suspend` 함수와 완벽하게 통합됩니다.
+
+```kotlin
+// R2DBC Repository 예시 (미래의 모습)
+interface UserR2dbcRepository : CoroutineCrudRepository<User, Long> {
+    // 이 메서드는 내부적으로 논블로킹으로 동작합니다.
+    suspend fun findByEmail(email: String): User?
+}
+
+@Service
+class ReactiveService(private val userR2dbcRepository: UserR2dbcRepository) {
+    suspend fun getUserByEmail(email: String): User? {
+        // withContext가 필요 없습니다. 처음부터 끝까지 논블로킹입니다.
+        return userR2dbcRepository.findByEmail(email)
+    }
+}
+```
+
+### **7.4 코루틴 사용 체크리스트**
+
+- [ ] `suspend` 함수 내에 블로킹 I/O 호출이 있는가?
+- [ ] 있다면, 해당 호출이 `withContext(Dispatchers.IO)`로 감싸져 있는가?
+- [ ] 여러 개의 `async` 작업을 병렬로 실행할 때, 하나의 작업이 다른 작업의 실행을 방해하지 않는가?
+- [ ] `GlobalScope`를 사용하고 있지는 않은가? (사용 금지. 반드시 적절한 `coroutineScope` 사용)
+- [ ] 모든 코루틴이 취소(Cancellation)에 협조적으로 동작하도록 구현되었는가? (예: `isActive` 확인)
+
 ### 6.1 알고리포트 프로젝트 테스트 방침
 
 **기본 원칙**: 모든 테스트는 **단위 테스트(Unit Test)** 우선으로 작성하며, Redis/Kafka 등 외부 인프라는 Mock으로 대체합니다.
