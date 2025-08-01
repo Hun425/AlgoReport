@@ -6,10 +6,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 사용자 관리 서비스
- * TDD Green 단계: 기본 기능만 구현 (실제 DB 연동은 추후)
+ * TDD Refactor 단계: Repository 패턴 도입으로 데이터 접근 분리
  */
 @Service
-class UserService {
+class UserService : UserRepository {
     
     // 테스트용 인메모리 저장소
     private val users = ConcurrentHashMap<String, User>()
@@ -48,7 +48,7 @@ class UserService {
         }
     }
     
-    fun findById(userId: String): User? {
+    override fun findById(userId: String): User? {
         return users[userId]
     }
     
@@ -66,6 +66,19 @@ class UserService {
     fun existsBySolvedacHandle(handle: String): Boolean {
         // TODO: [GREEN] solved.ac 핸들 중복 체크 로직 구현 필요
         return users.values.any { it.solvedacHandle == handle }
+    }
+    
+    // Repository 인터페이스 구현
+    override fun findAllActiveUserIds(): List<String> {
+        return users.keys.toList()
+    }
+    
+    override fun existsById(userId: String): Boolean {
+        return users.containsKey(userId)
+    }
+    
+    override fun count(): Long {
+        return users.size.toLong()
     }
     
     // 테스트용 메서드

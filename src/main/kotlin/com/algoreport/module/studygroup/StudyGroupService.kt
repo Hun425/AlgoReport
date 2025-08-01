@@ -7,10 +7,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 스터디 그룹 관리 서비스
- * TDD Green 단계: 기본 기능만 구현 (실제 DB 연동은 추후)
+ * TDD Refactor 단계: Repository 패턴 도입으로 데이터 접근 분리
  */
 @Service
-class StudyGroupService {
+class StudyGroupService : StudyGroupRepository {
     
     // 테스트용 인메모리 저장소
     private val studyGroups = ConcurrentHashMap<String, StudyGroup>()
@@ -43,7 +43,7 @@ class StudyGroupService {
         return nameIndex.containsKey(name)
     }
     
-    fun findById(groupId: String): StudyGroup? {
+    override fun findById(groupId: String): StudyGroup? {
         return studyGroups[groupId]
     }
     
@@ -120,11 +120,21 @@ class StudyGroupService {
         return group.memberCount
     }
     
-    /**
-     * 그룹이 존재하는지 확인
-     */
-    fun existsById(groupId: String): Boolean {
+    // Repository 인터페이스 구현
+    override fun findAllActiveGroupIds(): List<String> {
+        return studyGroups.keys.toList()
+    }
+    
+    override fun existsById(groupId: String): Boolean {
         return studyGroups.containsKey(groupId)
+    }
+    
+    override fun findGroupMemberIds(groupId: String): List<String> {
+        return groupMembers[groupId]?.toList() ?: emptyList()
+    }
+    
+    override fun count(): Long {
+        return studyGroups.size.toLong()
     }
     
     // 테스트용 메서드

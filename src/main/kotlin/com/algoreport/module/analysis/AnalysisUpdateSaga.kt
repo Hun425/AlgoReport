@@ -3,9 +3,9 @@ package com.algoreport.module.analysis
 import com.algoreport.config.exception.CustomException
 import com.algoreport.config.exception.Error
 import com.algoreport.config.outbox.OutboxService
-import com.algoreport.module.user.UserService
+import com.algoreport.module.user.UserRepository
 import com.algoreport.module.user.SagaStatus
-import com.algoreport.module.studygroup.StudyGroupService
+import com.algoreport.module.studygroup.StudyGroupRepository
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
@@ -15,26 +15,27 @@ import kotlin.system.measureTimeMillis
 
 /**
  * 분석 업데이트 SAGA
- * TDD Green 단계: 5단계 SAGA 패턴 구현
+ * TDD Refactor 단계: Repository 패턴 + Redis 캐시 통합
  * 
  * 비즈니스 로직:
- * 1. 사용자 및 그룹 데이터 수집 (collectUserAndGroupData)
+ * 1. 사용자 및 그룹 데이터 수집 (collectUserAndGroupData) - Repository 패턴 적용
  * 2. 개인별 통계 분석 - Kotlin Coroutines 병렬 처리 (performPersonalAnalysis)
  * 3. 그룹별 통계 분석 (performGroupAnalysis)
- * 4. Redis 캐시 업데이트 (updateCacheData)
+ * 4. Redis 캐시 업데이트 (updateCacheData) - AnalysisCacheService 통합
  * 5. ANALYSIS_UPDATE_COMPLETED 이벤트 발행 (publishAnalysisCompletedEvent)
  * 
- * 특징:
- * - 매일 자정 자동 실행 (@Scheduled)
- * - Kotlin Coroutines 기반 병렬 처리 (배치 크기별)
- * - 보상 트랜잭션으로 데이터 일관성 보장
- * - 실패 시나리오 처리 및 롤백
+ * 개선사항:
+ * - Repository 패턴으로 데이터 접근 분리 (리플렉션 제거)
+ * - Redis 캐시 서비스로 대시보드 성능 최적화
+ * - 배치 캐싱으로 성능 개선
+ * - 구조화된 예외 처리 강화
  */
 @Component
 class AnalysisUpdateSaga(
-    private val userService: UserService,
-    private val studyGroupService: StudyGroupService,
+    private val userRepository: UserRepository,
+    private val studyGroupRepository: StudyGroupRepository,
     private val analysisService: AnalysisService,
+    private val analysisCacheService: AnalysisCacheService,
     private val outboxService: OutboxService
 ) {
     
@@ -146,53 +147,26 @@ class AnalysisUpdateSaga(
     
     /**
      * Step 1: 사용자 및 그룹 데이터 수집
+     * TDD Refactor: Repository 패턴으로 개선 (리플렉션 제거)
      */
     private fun collectUserAndGroupData(): Pair<List<String>, List<String>> {
-        // 실제 구현에서는 UserRepository, StudyGroupRepository에서 활성 사용자/그룹 조회
-        // 현재는 테스트용 인메모리 데이터 활용
+        logger.debug("Starting data collection using Repository pattern")
         
-        val userIds = mutableListOf<String>()
-        val groupIds = mutableListOf<String>()
-        
-        // 테스트를 위해 현재 존재하는 사용자/그룹 감지
-        // 이는 테스트에서 생성된 데이터를 인식하기 위한 임시 방법
-        try {
-            // 임시로 UserService의 내부 구조에 접근하여 사용자 ID 추출
-            // 실제 구현에서는 Repository 계층에서 처리
-            val userField = userService.javaClass.getDeclaredField("users")
-            userField.isAccessible = true
-            @Suppress("UNCHECKED_CAST")
-            val users = userField.get(userService) as java.util.concurrent.ConcurrentHashMap<String, *>
-            userIds.addAll(users.keys)
-            logger.debug("Collected {} users via reflection", userIds.size)
+        return try {
+            // Repository 패턴을 통해 깔끔하게 데이터 수집
+            val userIds = userRepository.findAllActiveUserIds()
+            val groupIds = studyGroupRepository.findAllActiveGroupIds()
             
-            // 임시로 StudyGroupService의 내부 구조에 접근하여 그룹 ID 추출
-            val groupField = studyGroupService.javaClass.getDeclaredField("studyGroups")
-            groupField.isAccessible = true
-            @Suppress("UNCHECKED_CAST")
-            val groups = groupField.get(studyGroupService) as java.util.concurrent.ConcurrentHashMap<String, *>
-            groupIds.addAll(groups.keys)
-            logger.debug("Collected {} groups via reflection", groupIds.size)
+            logger.info("Data collection completed: {} users, {} groups", userIds.size, groupIds.size)
+            logger.debug("Collected users: {}", userIds.take(5)) // 처음 5개만 로그 (보안)
+            logger.debug("Collected groups: {}", groupIds.take(5)) // 처음 5개만 로그 (보안)
+            
+            Pair(userIds, groupIds)
             
         } catch (e: Exception) {
-            logger.warn("Failed to collect user/group data using reflection: {}", e.message, e)
-            // 실제 운영 환경에서는 Repository를 통한 정상적인 조회 수행
-            
-            // 리플렉션 실패 시 대체 방법: 직접 확인
-            // 테스트에서는 데이터가 있어야 하므로 로그로 확인 가능하도록 함
-            logger.info("UserService class: {}", userService.javaClass.name)
-            logger.info("StudyGroupService class: {}", studyGroupService.javaClass.name)
-            
-            // 필드 목록 출력 (디버깅용)
-            val userFields = userService.javaClass.declaredFields
-            logger.debug("UserService fields: {}", userFields.map { it.name }.joinToString())
-            
-            val groupFields = studyGroupService.javaClass.declaredFields  
-            logger.debug("StudyGroupService fields: {}", groupFields.map { it.name }.joinToString())
+            logger.error("Failed to collect user/group data from repositories: {}", e.message, e)
+            throw CustomException(Error.DATA_COLLECTION_FAILED)
         }
-        
-        logger.info("Data collection completed: {} users, {} groups", userIds.size, groupIds.size)
-        return Pair(userIds, groupIds)
     }
     
     /**
@@ -246,23 +220,62 @@ class AnalysisUpdateSaga(
     
     /**
      * 그룹의 멤버 ID 목록 조회
+     * TDD Refactor: Repository 패턴으로 개선
      */
     private fun getGroupMemberIds(groupId: String): List<String> {
-        // 실제 구현에서는 StudyGroupRepository에서 멤버 조회
-        // 현재는 테스트용으로 빈 리스트 반환 (AnalysisService에서 memberIds.size만 사용)
-        return emptyList()
+        return try {
+            studyGroupRepository.findGroupMemberIds(groupId)
+        } catch (e: Exception) {
+            logger.error("Failed to get group member IDs for group {}: {}", groupId, e.message)
+            emptyList() // 실패 시 빈 리스트 반환으로 안전하게 처리
+        }
     }
     
     /**
      * Step 4: Redis 캐시 업데이트
+     * TDD Refactor: AnalysisCacheService 통합으로 대시보드 성능 최적화
      */
     private fun updateCacheData(userIds: List<String>, groupIds: List<String>) {
-        // TODO: [REFACTOR] Redis 캐시 업데이트 로직 구현
-        // 개인 분석 결과를 Redis에 캐시
-        // 그룹 분석 결과를 Redis에 캐시
-        // 대시보드 성능 최적화를 위한 집계 데이터 캐시
+        logger.debug("Starting cache update for {} users and {} groups", userIds.size, groupIds.size)
         
-        logger.debug("Cache update completed for {} users and {} groups", userIds.size, groupIds.size)
+        try {
+            // 개인 분석 결과 배치 캐싱 (성능 최적화)
+            val personalAnalyses = mutableMapOf<String, PersonalAnalysis>()
+            userIds.forEach { userId ->
+                analysisService.getPersonalAnalysis(userId)?.let { analysis ->
+                    personalAnalyses[userId] = analysis
+                }
+            }
+            
+            if (personalAnalyses.isNotEmpty()) {
+                analysisCacheService.cachePersonalAnalysisBatch(personalAnalyses)
+                logger.debug("Cached {} personal analyses", personalAnalyses.size)
+            }
+            
+            // 그룹 분석 결과 배치 캐싱 (성능 최적화) 
+            val groupAnalyses = mutableMapOf<String, GroupAnalysis>()
+            groupIds.forEach { groupId ->
+                analysisService.getGroupAnalysis(groupId)?.let { analysis ->
+                    groupAnalyses[groupId] = analysis
+                }
+            }
+            
+            if (groupAnalyses.isNotEmpty()) {
+                analysisCacheService.cacheGroupAnalysisBatch(groupAnalyses)
+                logger.debug("Cached {} group analyses", groupAnalyses.size)
+            }
+            
+            // 마지막 업데이트 시간 캐시
+            analysisCacheService.cacheLastUpdateTime(LocalDateTime.now())
+            
+            logger.info("Cache update completed successfully: {} personal, {} group analyses cached", 
+                personalAnalyses.size, groupAnalyses.size)
+                
+        } catch (e: Exception) {
+            logger.error("Failed to update cache data: {}", e.message, e)
+            // 캐시 실패는 비즈니스 로직에 치명적이지 않으므로 예외를 던지지 않음
+            // 대신 경고 로그만 남기고 계속 진행
+        }
     }
     
     /**
@@ -293,15 +306,20 @@ class AnalysisUpdateSaga(
     }
     
     /**
-     * 보상 트랜잭션: 실패 시 분석 결과 롤백
+     * 보상 트랜잭션: 실패 시 분석 결과 및 캐시 롤백
+     * TDD Refactor: Redis 캐시 롤백 추가
      */
     private fun executeCompensation(request: AnalysisUpdateRequest) {
         logger.info("Executing compensation transaction for ANALYSIS_UPDATE_SAGA")
         
         try {
-            // 생성된 개인 분석 결과 삭제
-            // TODO: [REFACTOR] 실제 구현에서는 생성된 분석 결과만 선별적으로 삭제
+            // 생성된 분석 결과 삭제
             analysisService.clear()
+            logger.debug("Cleared all analysis results")
+            
+            // Redis 캐시도 함께 삭제 (데이터 일관성 보장)
+            analysisCacheService.evictAllAnalysisCache()
+            logger.debug("Evicted all analysis cache entries")
             
             // 보상 이벤트 발행
             publishCompensationEvent("ANALYSIS_UPDATE_COMPENSATED")
