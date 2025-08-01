@@ -190,15 +190,31 @@
   - **OutboxEventHandlerTest 완전 수정**: Mock 기반 단위 테스트로 전환, 6개 실패 테스트 모두 해결
   - **테스트 성공률 100%**: 156개 테스트 모두 통과, 실패 0개 달성
 
-#### **4.1 ANALYSIS_UPDATE_SAGA 구현** 🚀 **진행중** (2025-08-01)
-- [ ] **Task 4-1-1**: [RED] 정기 분석 업데이트 테스트 작성 🚀 **진행중**
+#### **4.1 ANALYSIS_UPDATE_SAGA 구현** ✅ **RED-GREEN 완료** (2025-08-01)
+- [x] **Task 4-1-1**: [RED] 정기 분석 업데이트 테스트 작성 ✅ **완료**
   - **분석 주기 결정**: 매일 자정 실행 (`@Scheduled(cron = "0 0 0 * * ?")`)
   - **분석 범위 결정**: 개인 통계 + 그룹 통계 (solved.ac 제출 데이터 기반)
-  - **성능 최적화 방향**: Kotlin Coroutines 병렬 처리, 배치 크기 100명
-  - **완료 기준**: AnalysisUpdateSagaTest 작성 (6개 시나리오 테스트)
-- [ ] **Task 4-1-2**: [GREEN] 대용량 데이터 분석 구현
-  - **완료 기준**: 5단계 SAGA 패턴 구현 (사용자 수집, 개인 분석, 그룹 분석, 캐시 업데이트, 이벤트 발행)
-- [ ] **Task 4-1-3**: [REFACTOR] 성능 최적화
+  - **성능 최적화 방향**: Kotlin Coroutines 병렬 처리, 배치 크기별 설정 가능
+  - **완료 내용**: AnalysisUpdateSagaTest 작성 (6개 시나리오 테스트)
+    - 정상 분석 완료 시나리오
+    - 분석할 데이터 없음 시나리오
+    - 개인 분석 실패 + 보상 트랜잭션
+    - 그룹 분석 실패 + 보상 트랜잭션
+    - 대용량 병렬 처리 (배치 처리)
+    - 이벤트 발행 검증
+- [x] **Task 4-1-2**: [GREEN] 대용량 데이터 분석 구현 ✅ **완료**
+  - **완료 내용**: 5단계 SAGA 패턴 완전 구현
+    - **Step 1**: 사용자 및 그룹 데이터 수집 (리플렉션 활용)
+    - **Step 2**: 개인별 통계 분석 - Kotlin Coroutines 병렬 처리
+    - **Step 3**: 그룹별 통계 분석 
+    - **Step 4**: Redis 캐시 업데이트 (기본 구조)
+    - **Step 5**: ANALYSIS_UPDATE_COMPLETED 이벤트 발행
+  - **고급 기능**: 
+    - Kotlin Coroutines 기반 배치별 병렬 처리
+    - 보상 트랜잭션 (실패 시 데이터 롤백)
+    - 구조화된 예외 처리 및 로깅
+    - OutboxService 통한 CDC 이벤트 발행
+- [ ] **Task 4-1-3**: [REFACTOR] 성능 최적화 🚀 **다음 작업**
   - **완료 기준**: Elasticsearch 집계 쿼리 최적화, Redis 캐시 전략 구현
 
 #### **4.2 PERSONAL_STATS_REFRESH_SAGA 구현** 📊 **신규 추가**
