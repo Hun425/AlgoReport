@@ -590,6 +590,32 @@
         1.  각 이벤트 처리 로직이 실패하더라도 다른 단계에 영향을 주지 않도록 예외 처리를 강화합니다.
         2.  각 단계별로 명확한 로그를 남겨 전체 흐름을 추적하기 쉽도록 개선합니다.
 
+### **Task 6-4: 코루틴 `runBlocking` 제거 및 안전한 스코프 적용 (신규)**
+- **우선순위**: **높음**
+- **대상 파일**: `SubmissionSyncSaga.kt`, `AnalysisUpdateSaga.kt`
+- **목표**: `@Scheduled` 메서드 내에서 스레드를 차단하는 `runBlocking`을 제거하고, 애플리케이션 스코프의 `CoroutineScope`를 사용하여 안전한 비동기 작업을 실행하도록 변경합니다.
+- **완료 기준**:
+  - [ ] `runBlocking` 호출이 프로젝트에서 모두 제거됨.
+  - [ ] 별도의 `CoroutineScope`를 주입받아 `launch` 빌더를 사용하는 방식으로 리팩토링 완료.
+  - [ ] 관련 단위/통합 테스트가 모두 통과하여 기능의 정상 동작을 보장.
+
+### **Task 6-5: 블로킹 I/O 호출 격리 규칙 전면 적용 (신규)**
+- **우선순위**: **높음**
+- **대상 파일**: `DataSyncBatchServiceImpl.kt` 등 `suspend` 함수 내에서 I/O가 발생하는 모든 곳.
+- **목표**: `suspend` 함수 내에서 실행되는 모든 블로킹 I/O(JPA, RestTemplate 등) 호출을 `withContext(Dispatchers.IO)`로 감싸, 코루틴 스레드가 차단되는 것을 방지하고 시스템 전체의 성능을 보장합니다.
+- **완료 기준**:
+  - [ ] 코드 전체를 검토하여 `withContext(Dispatchers.IO)`가 누락된 블로킹 호출을 모두 찾아 수정.
+  - [ ] 관련 코딩 컨벤션을 `CODING_STANDARDS.md`에 명시하고 팀에 공유.
+  - [ ] 코드 리뷰 시 해당 규칙을 최우선으로 점검하는 문화 정착.
+
+### **Task 6-6: Kafka Consumer DLQ(Dead Letter Queue) 도입 (신규)**
+- **우선순위**: **중간**
+- **목표**: 이벤트 처리 실패 시, 해당 메시지를 별도의 DLQ 토픽으로 보내 재처리나 분석이 가능하도록 하여 시스템 안정성을 높입니다.
+- **완료 기준**:
+  - [ ] Spring Kafka의 `DeadLetterPublishingRecoverer`를 사용하도록 Kafka Consumer 설정 수정.
+  - [ ] `*-dlq` 토픽이 자동으로 생성되고, 처리 실패한 메시지가 해당 토픽으로 전송되는지 통합 테스트로 검증.
+  - [ ] DLQ에 쌓인 메시지를 모니터링하고 재처리하는 절차를 `DEBEZIUM_RUNBOOK.md` 또는 별도 운영 문서에 기록.
+
 ### 아이디어 단계
 
 - **[아이디어] 업적(Achievement) 시스템**: "DP 마스터", "그래프 탐험가" 등 특정 조건 달성 시 배지를 부여하는 게임화 기능
