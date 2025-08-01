@@ -143,15 +143,8 @@ class AnalysisUpdateSaga(
         // 실제 구현에서는 UserRepository, StudyGroupRepository에서 활성 사용자/그룹 조회
         // 현재는 테스트용 인메모리 데이터 활용
         
-        // 모든 사용자 ID 수집 (실제로는 활성 사용자만)
         val userIds = mutableListOf<String>()
-        // UserService에서 모든 사용자 ID를 가져오는 로직 (임시로 빈 리스트)
-        // TODO: [REFACTOR] UserService에 getAllActiveUserIds() 메서드 추가 필요
-        
-        // 모든 그룹 ID 수집 (실제로는 활성 그룹만)
         val groupIds = mutableListOf<String>()
-        // StudyGroupService에서 모든 그룹 ID를 가져오는 로직 (임시로 빈 리스트)
-        // TODO: [REFACTOR] StudyGroupService에 getAllActiveGroupIds() 메서드 추가 필요
         
         // 테스트를 위해 현재 존재하는 사용자/그룹 감지
         // 이는 테스트에서 생성된 데이터를 인식하기 위한 임시 방법
@@ -163,6 +156,7 @@ class AnalysisUpdateSaga(
             @Suppress("UNCHECKED_CAST")
             val users = userField.get(userService) as java.util.concurrent.ConcurrentHashMap<String, *>
             userIds.addAll(users.keys)
+            logger.debug("Collected {} users via reflection", userIds.size)
             
             // 임시로 StudyGroupService의 내부 구조에 접근하여 그룹 ID 추출
             val groupField = studyGroupService.javaClass.getDeclaredField("studyGroups")
@@ -170,11 +164,26 @@ class AnalysisUpdateSaga(
             @Suppress("UNCHECKED_CAST")
             val groups = groupField.get(studyGroupService) as java.util.concurrent.ConcurrentHashMap<String, *>
             groupIds.addAll(groups.keys)
+            logger.debug("Collected {} groups via reflection", groupIds.size)
+            
         } catch (e: Exception) {
-            logger.warn("Failed to collect user/group data using reflection: {}", e.message)
+            logger.warn("Failed to collect user/group data using reflection: {}", e.message, e)
             // 실제 운영 환경에서는 Repository를 통한 정상적인 조회 수행
+            
+            // 리플렉션 실패 시 대체 방법: 직접 확인
+            // 테스트에서는 데이터가 있어야 하므로 로그로 확인 가능하도록 함
+            logger.info("UserService class: {}", userService.javaClass.name)
+            logger.info("StudyGroupService class: {}", studyGroupService.javaClass.name)
+            
+            // 필드 목록 출력 (디버깅용)
+            val userFields = userService.javaClass.declaredFields
+            logger.debug("UserService fields: {}", userFields.map { it.name }.joinToString())
+            
+            val groupFields = studyGroupService.javaClass.declaredFields  
+            logger.debug("StudyGroupService fields: {}", groupFields.map { it.name }.joinToString())
         }
         
+        logger.info("Data collection completed: {} users, {} groups", userIds.size, groupIds.size)
         return Pair(userIds, groupIds)
     }
     
