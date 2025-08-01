@@ -4,7 +4,7 @@
 
 ---
 
-## 🏗️ **아키텍처 다이어그램**
+## 🏗️ **아키텍처 다이어그램 (Elastic APM 포함)**
 
 ```mermaid
 graph TD
@@ -14,6 +14,8 @@ graph TD
 
     subgraph "백엔드 서버 (Backend Server - Modular Monolith)"
         BackendServer["알고리포트 애플리케이션<br>(Kotlin + Spring Boot)"]
+        APMAgent["Elastic APM Agent<br><i>(Java Agent)</i>"]
+        
         subgraph "도메인 모듈 (Domain Modules)"
             direction TB
             UserModule["사용자 모듈<br><i>(User Module)</i>"]
@@ -36,6 +38,114 @@ graph TD
         end
         subgraph "데이터 파이프라인 (Pipeline)"
             Kafka[("메시지 큐<br>(Apache Kafka)")]
+        end
+        subgraph "데이터 분석/처리 (Analysis/Processing)"
+            AnalysisService["분석 서비스<br>(Analysis Service)<br><i>@KafkaListener</i>"]
+            RecommendationEngine["추천 엔진<br>(Recommendation Engine)"]
+            MonitoringService["모니터링 서비스<br>(Study Group Monitor)"]
+        end
+    end
+
+    subgraph "외부 시스템 (External Systems)"
+        SolvedACAPI[/"solved.ac API<br><i>(사용자 정보, 제출 기록)</i>"/]
+        GoogleOAuth[/"Google OAuth2<br><i>(인증)</i>"/]
+    end
+
+    subgraph "데이터 저장소 (Data Stores)"
+        PostgreSQL[("RDBMS<br>(PostgreSQL)<br><i>마스터 데이터</i>")]
+        Redis[("인메모리 캐시<br>(Redis)<br><i>실시간 데이터</i>")]
+        Elasticsearch[("검색/분석 엔진<br>(Elasticsearch)<br><i>Phase1: 로그/APM<br>Phase2: 비즈니스 데이터</i>")]
+        H2[("H2 Database<br><i>테스트용</i>")]
+    end
+
+    subgraph "로그 및 모니터링 시스템 (Logging & APM)"
+        APMServer["Elastic APM Server<br><i>(추적 데이터 수집)</i>"]
+        Logstash["Logstash<br><i>로그 수집 및 파싱</i>"]
+        Kibana["시각화 대시보드<br>(Kibana)<br><i>로그 & APM</i>"]
+    end
+
+    %% 외부 시스템 연동
+    GoogleOAuth -- "OAuth2 인증" --> UserModule
+    SolvedACAPI -- "1. 주기적 데이터 수집" --> Collector
+    
+    %% 사용자 상호작용
+    KMPClient -- "REST API 호출" --> BackendServer
+    
+    %% 백엔드 내부
+    BackendServer -- "자동 계측" --> APMAgent
+    
+    %% 데이터 흐름
+    Collector -- "2. 원본 데이터 발행" --> Kafka
+    Kafka -- "3. 데이터 구독" --> AnalysisService
+    
+    %% 데이터 저장
+    BackendServer -- "핵심 비즈니스 데이터" --> PostgreSQL
+    BackendServer -- "실시간 랭킹/캐시" --> Redis
+    AnalysisService -- "분석 결과 저장" --> Elasticsearch
+    
+    %% 로그 및 APM 흐름
+    BackendServer -- "애플리케이션 로그" --> Logstash
+    Logstash -- "로그 파싱/전송" --> Elasticsearch
+    APMAgent -- "추적 데이터(Traces, Spans) 전송" --> APMServer
+    APMServer -- "처리된 추적 데이터 저장" --> Elasticsearch
+    Kibana -- "로그 및 APM 데이터 조회" --> Elasticsearch
+
+    %% 스타일링
+    classDef external fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef processing fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef storage fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef monitoring fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class SolvedACAPI,GoogleOAuth external
+    class Collector,Kafka,AnalysisService,RecommendationEngine,MonitoringService processing
+    class PostgreSQL,Redis,Elasticsearch,H2 storage
+    class APMServer,Logstash,Kibana monitoring
+```
+
+### **5. 모니터링 및 관리 (확장)**
+
+#### **5.1 Elastic APM (Application Performance Monitoring)**
+- **역할**: 분산 추적(Distributed Tracing)을 통해 마이크로서비스 및 이벤트 기반 아키텍처의 복잡한 상호작용을 시각화하고 성능 병목을 분석합니다.
+- **구성 요소**:
+  - **APM Agent**: Spring Boot 애플리케이션에 라이브러리로 추가되어, 코드 수정 없이 자동으로 요청, 쿼리, 이벤트 등을 추적합니다.
+  - **APM Server**: 에이전트로부터 수집된 데이터를 처리하여 Elasticsearch에 저장합니다.
+- **주요 기능**:
+  - **분산 추적**: `Correlation ID`를 통해 여러 모듈과 메시지 큐를 거치는 전체 트랜잭션 흐름을 시각적으로 추적합니다.
+  - **성능 분석**: 각 단계(Span)별 지연 시간을 측정하여 병목 지점을 정확히 찾아냅니다.
+  - **에러 추적**: 발생한 에러를 트랜잭션 컨텍스트와 함께 기록하여 디버깅을 용이하게 합니다.
+
+#### **5.2 Kibana (확장된 역할)**
+- **기존 역할**: 애플리케이션 로그 시각화 및 운영 모니터링.
+- **확장된 역할**: APM 데이터를 활용한 **분산 트랜잭션 시각화**. 서비스 맵, 트랜잭션 타임라인, 의존성 그래프 등을 제공하여 시스템 전체의 동작을 한눈에 파악할 수 있게 합니다.
+
+---
+
+## 🔄 **데이터 흐름 시나리오 (APM 추적 포함)**
+
+### **시나리오 1: 새로운 문제 제출 감지 및 분석**
+```mermaid
+sequenceDiagram
+    participant U as 사용자 (백준)
+    participant API as solved.ac API  
+    participant C as Collector
+    participant K as Kafka
+    participant AS as Analysis Service
+    participant APM as Elastic APM
+
+    Note over U, APM: 사용자가 백준에서 문제 해결
+    APM->>C: 1. Trace 시작 (Trace ID 생성)
+    C->>API: 2. 최신 제출 기록 조회 (Trace ID 전파)
+    API-->>C: 3. 제출 데이터 응답
+    C->>K: 4. new-submission 이벤트 발행 (Trace ID 포함)
+    APM->>APM: Collector Span 기록
+    
+    K-->>AS: 5. @KafkaListener 이벤트 구독 (Trace ID 수신)
+    AS->>AS: 6. 제출 데이터 분석
+    APM->>APM: Analysis Service Span 기록
+    
+    Note over APM: Kibana에서 전체 흐름 시각화
+```
+"메시지 큐<br>(Apache Kafka)")]
         end
         subgraph "데이터 분석/처리 (Analysis/Processing)"
             AnalysisService["분석 서비스<br>(Analysis Service)<br><i>@KafkaListener</i>"]

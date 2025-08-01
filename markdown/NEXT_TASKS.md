@@ -489,6 +489,107 @@
 
 ## 📋 백로그 (Backlog)
 
+---
+
+## Phase 6: Saga 리팩토링 및 분산 추적 시스템 구축 (신규)
+
+**목표**: 불필요하게 복잡한 Saga 패턴을 단순 이벤트 기반 아키텍처로 전환하고, Elastic APM을 도입하여 시스템의 복잡성을 낮추고 관측 가능성(Observability)을 극대화한다.
+
+### **Task 6-0: Elastic APM을 이용한 분산 추적 시스템 구축**
+- **우선순위**: 🔥 **Critical** (Phase 6의 모든 작업에 대한 전제 조건)
+- **예상 소요시간**: 2시간
+- **완료 기준**:
+  - [ ] `docker-compose.yml`에 APM 서버 추가 및 실행
+  - [ ] `build.gradle.kts`에 APM Agent 의존성 추가
+  - [ ] Kibana APM 대시보드에서 애플리케이션 트랜잭션 데이터 확인
+
+### **Task 6-1: `USER_PROFILE_UPDATE_SAGA` 리팩토링**
+- **TDD 사이클 계획:**
+    - **[RED] 테스트 재정의:**
+        1.  `UserProfileUpdateSagaTest`를 삭제하고, `UserService` 통합 테스트를 새로 작성하여 `USER_PROFILE_UPDATED` 이벤트 발행을 검증합니다.
+        2.  각 구독 모듈의 이벤트 핸들러 단위 테스트를 작성합니다.
+    - **[GREEN] Saga 로직 제거:**
+        1.  `UserProfileUpdateSaga` 클래스를 삭제하고, `UserService`에서 직접 이벤트를 발행하도록 수정합니다.
+    - **[REFACTOR] 구독자 로직 강화:**
+        1.  각 이벤트 핸들러의 멱등성 및 재시도 로직을 강화합니다.
+
+### **Task 6-2: `DISCUSSION_CREATE_SAGA` 리팩토링**
+- **TDD 사이클 계획:**
+    - **[RED] 테스트 재정의:**
+        1.  `DiscussionCreateSagaTest`를 삭제하고, `SocialService` 통합 테스트를 작성하여 `DISCUSSION_CREATED` 이벤트 발행을 검증합니다.
+    - **[GREEN] Saga 로직 제거:**
+        1.  `DiscussionCreateSaga`를 삭제하고, `SocialService`에서 직접 이벤트를 발행하도록 수정합니다.
+    - **[REFACTOR] 구독자 로직 개선:**
+        1.  `NotificationService`의 이벤트 핸들러가 독립적으로 동작하도록 수정합니다.
+
+### **Task 6-3: `PERSONAL_STATS_REFRESH_SAGA` 리팩토링**
+- **TDD 사이클 계획:**
+    - **[RED] 단계별 테스트 재정의:**
+        1.  `PersonalStatsRefreshSagaTest`를 삭제합니다.
+        2.  각 서비스(Analysis, Cache, Notification)가 특정 이벤트를 수신하고 다음 이벤트를 발행하는지 검증하는 단위/통합 테스트를 각각 작성합니다.
+    - **[GREEN] Saga를 이벤트 체인으로 분리:**
+        1.  `PersonalStatsRefreshSaga`를 삭제하고, 각 서비스가 이벤트 체인으로 동작하도록 구현을 변경합니다.
+    - **[REFACTOR] 각 단계의 독립성 강화:**
+        1.  각 이벤트 처리 로직의 예외 처리와 로깅을 강화하여 추적 용이성을 높입니다.
+
+## Phase 6: Saga 리팩토링 및 아키텍처 경량화 (신규)
+
+**목표**: 불필요하게 복잡한 Saga 패턴을 단순 이벤트 기반 아키텍처로 전환하여 시스템의 복잡성을 낮추고, 모듈 간 결합도를 줄이며, 유지보수성을 향상시킨다.
+
+### **Task 6-1: `USER_PROFILE_UPDATE_SAGA` 리팩토링**
+
+- **TDD 사이클 계획:**
+    - **[RED] 테스트 재정의:**
+        1.  기존 `UserProfileUpdateSagaTest`를 삭제합니다.
+        2.  `UserService`에 대한 통합 테스트를 새로 작성합니다. 이 테스트는 `updateProfile` 메서드 호출 시, User 모듈의 DB는 변경되고 `USER_PROFILE_UPDATED` 이벤트가 Outbox에 정확히 저장되는지만을 검증합니다. (이 테스트는 처음에는 실패합니다.)
+        3.  각 구독 모듈(Analysis, StudyGroup)의 이벤트 핸들러에 대한 단위 테스트를 작성하여, 이벤트 수신 시 각자 자신의 데이터를 올바르게 동기화하는지 검증합니다.
+
+    - **[GREEN] Saga 로직 제거 및 단순 이벤트 발행:**
+        1.  `UserProfileUpdateSaga` 클래스를 삭제합니다.
+        2.  `UserService`의 `updateProfile` 메서드에서 Saga를 호출하는 로직을 제거합니다.
+        3.  대신, 프로필 업데이트 트랜잭션이 성공한 후 `OutboxService`를 통해 `USER_PROFILE_UPDATED` 이벤트를 발행하도록 수정합니다.
+        4.  새로 작성한 통합 테스트를 통과시킵니다.
+
+    - **[REFACTOR] 구독자 로직 강화:**
+        1.  각 구독 모듈의 이벤트 핸들러가 멱등성(Idempotency)을 가지도록 코드를 개선합니다. (같은 이벤트를 여러 번 수신해도 문제가 없도록)
+        2.  각 핸들러의 예외 처리 및 재시도 로직을 강화합니다.
+        3.  관련 없는 Saga 상태 추적 로직을 모두 제거합니다.
+
+### **Task 6-2: `DISCUSSION_CREATE_SAGA` 리팩토링**
+
+- **TDD 사이클 계획:**
+    - **[RED] 테스트 재정의:**
+        1.  `DiscussionCreateSagaTest`를 삭제합니다.
+        2.  `SocialService`에 대한 통합 테스트를 작성하여, 토론 생성 시 `DISCUSSION_CREATED` 이벤트가 Outbox에 저장되는 것을 검증합니다.
+        3.  `NotificationService`의 이벤트 핸들러 단위 테스트를 작성하여, 이벤트 수신 시 알림 생성 로직이 동작하는지 검증합니다.
+
+    - **[GREEN] Saga 로직 제거:**
+        1.  `DiscussionCreateSaga` 클래스를 삭제합니다.
+        2.  `SocialService`의 `createDiscussion` 메서드에서 Saga 로직을 제거하고, `OutboxService`를 통한 이벤트 발행 로직으로 대체합니다.
+        3.  새로운 테스트를 통과시킵니다.
+
+    - **[REFACTOR] 구독자 로직 개선:**
+        1.  `NotificationService`의 이벤트 핸들러가 알림 발송 실패 시, 토론 생성 트랜잭션에 영향을 주지 않고 독립적으로 재시도하도록 로직을 수정합니다.
+        2.  관련 코드의 가독성을 높이고 주석을 정리합니다.
+
+### **Task 6-3: `PERSONAL_STATS_REFRESH_SAGA` 리팩토링**
+
+- **TDD 사이클 계획:**
+    - **[RED] 단계별 테스트 재정의:**
+        1.  `PersonalStatsRefreshSagaTest`를 삭제합니다.
+        2.  **1단계 테스트:** `AnalysisService`가 개인 통계 분석 후 `PERSONAL_STATS_UPDATED` 이벤트를 발행하는지 검증하는 테스트를 작성합니다.
+        3.  **2단계 테스트:** `CacheService`의 이벤트 핸들러가 위 이벤트를 수신하여 캐시를 업데이트하고 `PERSONAL_CACHE_REFRESHED` 이벤트를 발행하는지 검증하는 테스트를 작성합니다.
+        4.  **3단계 테스트:** `NotificationService`의 이벤트 핸들러가 캐시 갱신 이벤트를 수신하여 알림을 생성하는지 검증합니다.
+
+    - **[GREEN] Saga를 이벤트 체인으로 분리:**
+        1.  `PersonalStatsRefreshSaga` 클래스를 삭제합니다.
+        2.  각 서비스(Analysis, Cache, Notification)가 이전 단계의 이벤트를 구독하고, 자신의 로직을 처리한 뒤, 다음 단계의 이벤트를 발행하도록 **이벤트 체인(Chain of Events)** 구조로 구현합니다.
+        3.  새로 작성한 단계별 테스트를 모두 통과시킵니다.
+
+    - **[REFACTOR] 각 단계의 독립성 강화:**
+        1.  각 이벤트 처리 로직이 실패하더라도 다른 단계에 영향을 주지 않도록 예외 처리를 강화합니다.
+        2.  각 단계별로 명확한 로그를 남겨 전체 흐름을 추적하기 쉽도록 개선합니다.
+
 ### 아이디어 단계
 
 - **[아이디어] 업적(Achievement) 시스템**: "DP 마스터", "그래프 탐험가" 등 특정 조건 달성 시 배지를 부여하는 게임화 기능
