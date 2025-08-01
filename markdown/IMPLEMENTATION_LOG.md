@@ -488,11 +488,61 @@
 - **커밋 내역**:
   - `test: JaCoCo 코드 커버리지 도입 및 누락 테스트 추가` (c736efb)
 
+### **Task 4-1: ANALYSIS_UPDATE_SAGA 구현** ✅ **RED-GREEN 완료** (2025-08-01)
+
+#### **4-1-1~2: ANALYSIS_UPDATE_SAGA RED-GREEN 단계 완료** ✅ **완료**
+- **TDD 적용**: Red-Green 사이클 완료 (REFACTOR 단계 준비)
+- **구현 내용**:
+  
+  **Task 4-1-1: [RED] 정기 분석 업데이트 테스트 작성**:
+  - **AnalysisUpdateSagaTest**: 6개 시나리오 테스트 완료
+    - 정상 분석 완료 (개인+그룹 통계)
+    - 분석할 데이터 없음 (빈 데이터 처리)
+    - 개인 분석 실패 시나리오 + 보상 트랜잭션
+    - 그룹 분석 실패 시나리오 + 보상 트랜잭션
+    - 대용량 병렬 처리 (10명 사용자, 3명씩 배치)
+    - 이벤트 발행 검증 (ANALYSIS_UPDATE_COMPLETED)
+  - **데이터 모델**: AnalysisModels.kt 완성 (요청/응답/분석 데이터 구조)
+  - **빈 구현체**: AnalysisUpdateSaga, AnalysisService 기본 구조
+  
+  **Task 4-1-2: [GREEN] 5단계 SAGA 패턴 구현**:
+  - **AnalysisUpdateSaga 완전 구현**: 5단계 SAGA 패턴
+    - 매일 자정 자동 실행 (`@Scheduled(cron = "0 0 0 * * ?")`)
+    - **Step 1**: collectUserAndGroupData() - 리플렉션 기반 데이터 수집
+    - **Step 2**: performPersonalAnalysis() - Kotlin Coroutines 병렬 처리
+    - **Step 3**: performGroupAnalysis() - 그룹별 통계 집계
+    - **Step 4**: updateCacheData() - Redis 캐시 업데이트 (기본 구조)
+    - **Step 5**: publishAnalysisCompletedEvent() - OutboxService 이벤트 발행
+  - **AnalysisService 실제 로직**: 모의 데이터 기반 개인/그룹 분석
+    - 개인 분석: 태그별 숙련도, 난이도별 해결 수, 최근 활동 등
+    - 그룹 분석: 그룹 평균 티어, 상위 성과자, 활성 멤버 비율 등
+    - 실패 시뮬레이션 기능 (테스트용)
+  - **보상 트랜잭션**: executeCompensation() 구현
+    - 실패 시 분석 결과 롤백
+    - 보상 이벤트 발행 (ANALYSIS_UPDATE_COMPENSATED)
+  - **고급 기능**:
+    - Kotlin Coroutines 배치별 병렬 처리 (사용자 정의 배치 크기)
+    - 구조화된 예외 처리 및 상세 로깅
+    - 빈 데이터 처리 (사용자/그룹 없어도 완료 처리)
+    - 성능 측정 (처리 시간 추적)
+
+- **기술적 개선사항**:
+  - **메서드 시그니처 충돌 해결**: suspend 함수명 변경으로 컴파일 오류 수정
+  - **데이터 수집 로직 개선**: 리플렉션 실패 시 디버깅 로그 추가
+  - **빈 데이터 처리**: 데이터 없을 때도 분석 완료로 처리하는 로직 개선
+
+- **커밋 내역**:
+  - `test: Red - ANALYSIS_UPDATE_SAGA 테스트 작성 (기존 패턴 준수)` (f3cdaab)
+  - `feat: Green - ANALYSIS_UPDATE_SAGA 5단계 구현 완료` (01f545a)
+  - `fix: 메서드 시그니처 충돌 해결 - suspend 함수명 변경` (5a979e6)
+  - `fix: 데이터 수집 로직 개선 및 디버깅 로그 추가` (a462f06)
+  - `fix: 데이터 없을 때도 분석 완료로 처리하도록 로직 수정` (55f09f4)
+
 ## 📈 **Phase 4 진행률**
 
-- **전체 진행률**: 30% (Task 4-0 완료, Task 4-1, 4-2, 4-3 대기)
-- **현재 상태**: 코드 품질 인프라 구축 완료, ANALYSIS_UPDATE_SAGA 준비 완료
-- **완료 일자**: 2025-07-31 (Task 4-0 완료)
+- **전체 진행률**: 70% (Task 4-0 완료, Task 4-1 RED-GREEN 완료, Task 4-1-3 REFACTOR 준비)
+- **현재 상태**: ANALYSIS_UPDATE_SAGA RED-GREEN 완료, REFACTOR 단계 준비
+- **완료 일자**: 2025-08-01 (Task 4-1-1, 4-1-2 완료)
 
 ---
 
