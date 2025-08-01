@@ -181,7 +181,7 @@ class AnalysisUpdateSaga(
     /**
      * Step 2: 개인별 통계 분석 (Kotlin Coroutines 병렬 처리)
      */
-    private suspend fun performPersonalAnalysis(userIds: List<String>, batchSize: Int): Int = coroutineScope {
+    private suspend fun performPersonalAnalysisAsync(userIds: List<String>, batchSize: Int): Int = coroutineScope {
         val batches = userIds.chunked(batchSize)
         
         batches.mapIndexed { batchIndex, batch ->
@@ -207,7 +207,7 @@ class AnalysisUpdateSaga(
      */
     private fun performPersonalAnalysis(userIds: List<String>, batchSize: Int): Int {
         return runBlocking {
-            performPersonalAnalysis(userIds, batchSize)
+            performPersonalAnalysisAsync(userIds, batchSize)
         }
     }
     
