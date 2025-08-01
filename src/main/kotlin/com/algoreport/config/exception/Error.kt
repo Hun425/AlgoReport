@@ -42,6 +42,7 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     EVENT_PUBLISH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50005", "이벤트 발행에 실패했습니다."),
     GROUP_CREATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50006", "스터디 그룹 생성에 실패했습니다."),
     GROUP_MEMBER_ADD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50007", "스터디 그룹 멤버 추가에 실패했습니다."),
+    DATA_COLLECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50008", "데이터 수집 중 오류가 발생했습니다."),
     
     // 429 TOO_MANY_REQUESTS
     SOLVEDAC_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "E42901", "solved.ac API 호출 제한에 도달했습니다. 잠시 후 다시 시도해주세요."),
