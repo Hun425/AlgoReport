@@ -190,10 +190,16 @@
   - **OutboxEventHandlerTest 완전 수정**: Mock 기반 단위 테스트로 전환, 6개 실패 테스트 모두 해결
   - **테스트 성공률 100%**: 156개 테스트 모두 통과, 실패 0개 달성
 
-#### **4.1 ANALYSIS_UPDATE_SAGA 구현**
-- [ ] **Task 4-1-1**: [RED] 정기 분석 업데이트 테스트
+#### **4.1 ANALYSIS_UPDATE_SAGA 구현** 🚀 **진행중** (2025-08-01)
+- [ ] **Task 4-1-1**: [RED] 정기 분석 업데이트 테스트 작성 🚀 **진행중**
+  - **분석 주기 결정**: 매일 자정 실행 (`@Scheduled(cron = "0 0 0 * * ?")`)
+  - **분석 범위 결정**: 개인 통계 + 그룹 통계 (solved.ac 제출 데이터 기반)
+  - **성능 최적화 방향**: Kotlin Coroutines 병렬 처리, 배치 크기 100명
+  - **완료 기준**: AnalysisUpdateSagaTest 작성 (6개 시나리오 테스트)
 - [ ] **Task 4-1-2**: [GREEN] 대용량 데이터 분석 구현
+  - **완료 기준**: 5단계 SAGA 패턴 구현 (사용자 수집, 개인 분석, 그룹 분석, 캐시 업데이트, 이벤트 발행)
 - [ ] **Task 4-1-3**: [REFACTOR] 성능 최적화
+  - **완료 기준**: Elasticsearch 집계 쿼리 최적화, Redis 캐시 전략 구현
 
 #### **4.2 PERSONAL_STATS_REFRESH_SAGA 구현** 📊 **신규 추가**
 - [ ] **Task 4-2-1**: [RED] 개인 통계 갱신 테스트
