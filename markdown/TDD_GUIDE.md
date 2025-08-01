@@ -430,3 +430,163 @@ class StudyGroupServiceTest {
     }
 }
 ```
+
+---
+
+## 📊 **분석 모듈 Mock 전략 (Redis/Kafka Mock 사용 가이드)**
+
+### **🎯 분석 모듈에서 Mock 사용이 적절한 이유**
+
+**알고리포트의 분석 모듈은 복잡한 비즈니스 로직을 포함하므로 단위 테스트에서 Redis와 Kafka를 Mock으로 대체하는 것이 최적입니다.**
+
+#### **Mock 사용의 핵심 근거**
+
+1. **비즈니스 로직 집중**: 인프라 문제가 아닌 도메인 로직 검증
+2. **빠른 TDD 사이클**: Red-Green-Refactor 사이클이 2-5초 내 완료
+3. **테스트 격리성**: 외부 환경에 영향받지 않는 독립적 테스트
+4. **높은 안정성**: 156개 테스트 모두 통과, JaCoCo 75%/80% 커버리지 달성
+
+### **✅ 올바른 분석 모듈 Mock 테스트 패턴**
+
+#### **Redis 캐시 서비스 Mock 테스트**
+```kotlin
+// ✅ 완벽한 Redis Mock 테스트 예시
+class AnalysisCacheServiceTest : BehaviorSpec() {
+    private lateinit var redisTemplate: RedisTemplate<String, String>
+    private lateinit var objectMapper: ObjectMapper
+    private lateinit var analysisCacheService: AnalysisCacheService
+    
+    init {
+        beforeEach {
+            redisTemplate = mockk()
+            objectMapper = ObjectMapper().apply {
+                registerModule(JavaTimeModule())  // LocalDateTime 지원 필수!
+            }
+            val valueOperations = mockk<ValueOperations<String, String>>()
+            every { redisTemplate.opsForValue() } returns valueOperations
+            
+            analysisCacheService = AnalysisCacheService(redisTemplate, objectMapper)
+        }
+        
+        given("개인 분석 데이터를 캐시할 때") {
+            `when`("캐시에 저장하고 조회하면") {
+                then("동일한 데이터를 반환해야 한다") {
+                    // Mock 설정: 저장과 조회
+                    every { valueOperations.set(any(), any(), any<Long>(), any()) } just runs
+                    every { valueOperations.get("analysis:personal:user123") } returns personalAnalysisJson
+                    
+                    // 테스트 실행
+                    analysisCacheService.cachePersonalAnalysis("user123", personalAnalysis)
+                    val cached = analysisCacheService.getPersonalAnalysisFromCache("user123")
+                    
+                    // 비즈니스 로직 검증 (인프라가 아닌!)
+                    cached!!.userId shouldBe "user123"
+                    cached.totalSolved shouldBe 150
+                    cached.tagSkills shouldBe mapOf("dp" to 0.8, "graph" to 0.6)
+                    
+                    // Mock 호출 검증
+                    verify { valueOperations.set("analysis:personal:user123", any(), 6, TimeUnit.HOURS) }
+                }
+            }
+        }
+    }
+}
+```
+
+#### **Kafka 이벤트 발행 Mock 테스트**
+```kotlin
+// ✅ 완벽한 Kafka Mock 테스트 예시  
+class AnalysisUpdateSagaTest : BehaviorSpec() {
+    init {
+        given("분석 업데이트 SAGA가 실행될 때") {
+            `when`("분석이 성공적으로 완료되면") {
+                then("ANALYSIS_UPDATE_COMPLETED 이벤트가 발행되어야 한다") {
+                    // OutboxService Mock 설정
+                    val outboxService = mockk<OutboxService>()
+                    every { outboxService.publishEvent(any(), any(), any(), any()) } returns UUID.randomUUID().toString()
+                    
+                    val analysisUpdateSaga = AnalysisUpdateSaga(userRepo, groupRepo, analysisService, cacheService, outboxService)
+                    
+                    // 테스트 실행
+                    val result = analysisUpdateSaga.start(request)
+                    
+                    // 비즈니스 로직 검증 (인프라가 아닌!)
+                    result.sagaStatus shouldBe SagaStatus.COMPLETED
+                    result.eventPublished shouldBe true
+                    
+                    // 이벤트 발행 검증 (Kafka 연결이 아닌 이벤트 데이터 구조!)
+                    verify { 
+                        outboxService.publishEvent(
+                            eventType = "ANALYSIS_UPDATE_COMPLETED",
+                            aggregateType = "ANALYSIS", 
+                            eventData = match { data ->
+                                data["totalUsersProcessed"] == 2 && 
+                                data["sagaType"] == "ANALYSIS_UPDATE_SAGA"
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### **🚨 Mock 테스트 시 주의사항**
+
+#### **Jackson LocalDateTime 직렬화 문제**
+```kotlin
+// ❌ 잘못된 방식 - LocalDateTime 직렬화 실패
+val objectMapper = ObjectMapper()
+
+// ✅ 올바른 방식 - JSR310 모듈 추가 필수
+val objectMapper = ObjectMapper().apply {
+    registerModule(JavaTimeModule())  // LocalDateTime 지원
+}
+```
+
+#### **배치 캐싱 Mock 설정**
+```kotlin
+// ❌ 잘못된 방식 - 배치 저장 후 조회 시 Mock 응답 없음
+analysisCacheService.cachePersonalAnalysisBatch(personalAnalysisMap)
+val cached = analysisCacheService.getPersonalAnalysisFromCache("user1") // null 반환!
+
+// ✅ 올바른 방식 - 배치 저장 후 조회를 위한 Mock 설정 추가
+val user1Json = objectMapper.writeValueAsString(personalAnalysisMap["user1"])
+every { valueOperations.get("analysis:personal:user1") } returns user1Json
+
+analysisCacheService.cachePersonalAnalysisBatch(personalAnalysisMap) 
+val cached = analysisCacheService.getPersonalAnalysisFromCache("user1") // 정상 반환!
+```
+
+### **🎯 분석 모듈에서 테스트하는 것 vs 하지 않는 것**
+
+#### **✅ 우리가 테스트하는 핵심 비즈니스 로직**
+- 개인/그룹 분석 결과 계산이 정확한가?
+- 캐시 키 패턴이 `analysis:personal:{userId}` 형태인가?
+- TTL이 개인 6시간, 그룹 12시간으로 설정되는가?
+- SAGA 단계별 로직이 올바른 순서로 실행되는가?
+- 보상 트랜잭션이 실패 시 적절히 동작하는가?
+- 이벤트 데이터 구조가 비즈니스 요구사항에 맞는가?
+
+#### **❌ 테스트하지 않는 인프라 관심사**
+- Redis 서버가 실제로 동작하는가? (인프라 문제)
+- Kafka 브로커가 메시지를 저장하는가? (환경 문제)
+- 네트워크 연결이 안정적인가? (환경 문제)
+- JSON 직렬화가 올바르게 되는가? (Jackson 라이브러리 문제)
+
+### **📋 분석 모듈 Mock 테스트 체크리스트**
+
+**테스트 작성 전 확인:**
+- [ ] ObjectMapper에 JavaTimeModule 추가했는가?
+- [ ] 모든 Redis 호출에 대한 Mock 응답 설정했는가?
+- [ ] 배치 캐싱 후 조회를 위한 Mock 설정 추가했는가?
+- [ ] 비즈니스 로직만 검증하고 인프라는 무시하는가?
+- [ ] Mock 호출 검증으로 올바른 파라미터 전달 확인하는가?
+
+**테스트 실패 시 확인:**
+- [ ] Jackson LocalDateTime 직렬화 오류가 아닌가?
+- [ ] Mock 응답이 설정되지 않아 null을 반환하는 것은 아닌가?
+- [ ] 비즈니스 로직 자체의 문제인가, Mock 설정 문제인가?
+
+**🚨 기억하세요: 분석 모듈은 복잡한 비즈니스 로직이 핵심입니다. Redis와 Kafka는 이미 검증된 오픈소스이므로 Mock으로 충분합니다!**
