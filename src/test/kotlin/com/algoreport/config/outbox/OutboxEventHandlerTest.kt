@@ -397,6 +397,160 @@ class OutboxEventHandlerTest : BehaviorSpec() {
                     verify(exactly = 1) { mockEvent.markAsProcessed() }
                 }
             }
+
+            `when`("알려지지 않은 STUDY_GROUP 이벤트를 처리할 때") {
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val objectMapper = ObjectMapper()
+                val handler = OutboxEventHandler(outboxEventRepository, objectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"groupId": "group123", "action": "unknown"}"""
+                val topic = "STUDY_GROUP_UNKNOWN_ACTION"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("기본 처리만 수행하고 성공해야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "STUDY_GROUP",
+                        version = "1"
+                    )
+
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
+
+            `when`("알려지지 않은 USER 이벤트를 처리할 때") {
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val objectMapper = ObjectMapper()
+                val handler = OutboxEventHandler(outboxEventRepository, objectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"userId": "user123", "action": "unknown"}"""
+                val topic = "USER_UNKNOWN_ACTION"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("기본 처리만 수행하고 성공해야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "USER",
+                        version = "1"
+                    )
+
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
+
+            `when`("알려지지 않은 ANALYSIS 이벤트를 처리할 때") {
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val objectMapper = ObjectMapper()
+                val handler = OutboxEventHandler(outboxEventRepository, objectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"analysisId": "analysis123", "action": "unknown"}"""
+                val topic = "ANALYSIS_UNKNOWN_ACTION"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("기본 처리만 수행하고 성공해야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "ANALYSIS",
+                        version = "1"
+                    )
+
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
+
+            `when`("알려지지 않은 NOTIFICATION 이벤트를 처리할 때") {
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val objectMapper = ObjectMapper()
+                val handler = OutboxEventHandler(outboxEventRepository, objectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"notificationId": "notif123", "action": "unknown"}"""
+                val topic = "NOTIFICATION_UNKNOWN_ACTION"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("기본 처리만 수행하고 성공해야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "NOTIFICATION",
+                        version = "1"
+                    )
+
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
+
+            `when`("비즈니스 로직 처리 중 예외가 발생할 때") {
+                // 예외 발생을 위해 잘못된 ObjectMapper 사용
+                val outboxEventRepository = mockk<OutboxEventRepository>()
+                val faultyObjectMapper = mockk<ObjectMapper>()
+                val handler = OutboxEventHandler(outboxEventRepository, faultyObjectMapper)
+                
+                val eventId = UUID.randomUUID().toString()
+                val eventPayload = """{"userId": "user123"}"""
+                val topic = "USER_REGISTERED"
+
+                val mockEvent = mockk<OutboxEvent>()
+                
+                // parseEventPayload에서 예외 발생하도록 설정
+                every { faultyObjectMapper.readValue(eventPayload, Map::class.java) } throws RuntimeException("JSON Parse Error")
+                every { outboxEventRepository.findById(UUID.fromString(eventId)) } returns Optional.of(mockEvent)
+                every { mockEvent.markAsProcessed() } just runs
+                every { outboxEventRepository.save(mockEvent) } returns mockEvent
+
+                then("예외를 처리하고 이벤트 마킹은 정상 수행되어야 한다") {
+                    handler.handleOutboxEvent(
+                        eventPayload = eventPayload,
+                        topic = topic,
+                        eventId = eventId,
+                        sagaId = null,
+                        sagaType = null,
+                        aggregateType = "USER",
+                        version = "1"
+                    )
+
+                    // JSON 파싱 실패로 인해 빈 맵으로 처리되지만 이벤트 마킹은 수행됨
+                    verify(exactly = 1) { mockEvent.markAsProcessed() }
+                }
+            }
         }
     }
 }

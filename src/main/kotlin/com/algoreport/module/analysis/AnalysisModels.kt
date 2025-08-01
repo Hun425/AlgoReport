@@ -35,8 +35,8 @@ data class AnalysisUpdateResult(
  * 개인 분석 데이터
  */
 data class PersonalAnalysis(
-    val userId: String,
-    val analysisDate: LocalDateTime,
+    val userId: String = "",
+    val analysisDate: LocalDateTime = LocalDateTime.now(),
     val totalSolved: Int = 0,
     val currentTier: Int = 0,
     val tagSkills: Map<String, Double> = emptyMap(), // 태그별 숙련도 (0.0 ~ 1.0)
@@ -50,8 +50,8 @@ data class PersonalAnalysis(
  * 그룹 분석 데이터
  */
 data class GroupAnalysis(
-    val groupId: String,
-    val analysisDate: LocalDateTime,
+    val groupId: String = "",
+    val analysisDate: LocalDateTime = LocalDateTime.now(),
     val memberCount: Int = 0,
     val totalGroupSolved: Int = 0,
     val averageTier: Double = 0.0,
