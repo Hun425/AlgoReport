@@ -75,18 +75,26 @@ class AnalysisUpdateSaga(
             // Step 2: 개인별 통계 분석 (병렬 처리)
             var personalAnalysisCompleted = false
             var batchesProcessed = 0
-            if (request.enablePersonalAnalysis && userIds.isNotEmpty()) {
-                batchesProcessed = performPersonalAnalysis(userIds, request.batchSize)
+            if (request.enablePersonalAnalysis) {
+                if (userIds.isNotEmpty()) {
+                    batchesProcessed = performPersonalAnalysis(userIds, request.batchSize)
+                    logger.debug("Personal analysis completed for {} users in {} batches", userIds.size, batchesProcessed)
+                } else {
+                    logger.debug("No users to analyze, personal analysis considered completed")
+                }
                 personalAnalysisCompleted = true
-                logger.debug("Personal analysis completed for {} users in {} batches", userIds.size, batchesProcessed)
             }
             
             // Step 3: 그룹별 통계 분석
             var groupAnalysisCompleted = false
-            if (request.enableGroupAnalysis && groupIds.isNotEmpty()) {
-                performGroupAnalysis(groupIds)
+            if (request.enableGroupAnalysis) {
+                if (groupIds.isNotEmpty()) {
+                    performGroupAnalysis(groupIds)
+                    logger.debug("Group analysis completed for {} groups", groupIds.size)
+                } else {
+                    logger.debug("No groups to analyze, group analysis considered completed")
+                }
                 groupAnalysisCompleted = true
-                logger.debug("Group analysis completed for {} groups", groupIds.size)
             }
             
             // Step 4: Redis 캐시 업데이트
@@ -103,7 +111,7 @@ class AnalysisUpdateSaga(
                 sagaStatus = SagaStatus.COMPLETED,
                 totalUsersProcessed = userIds.size,
                 totalGroupsProcessed = groupIds.size,
-                batchesProcessed = if (userIds.isEmpty()) 0 else batchesProcessed,
+                batchesProcessed = batchesProcessed,
                 personalAnalysisCompleted = personalAnalysisCompleted || !request.enablePersonalAnalysis,
                 groupAnalysisCompleted = groupAnalysisCompleted || !request.enableGroupAnalysis,
                 cacheUpdateCompleted = true,
