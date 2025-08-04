@@ -1,0 +1,3 @@
+# 테스트용 자동 설정
+org.springframework.boot.test.autoconfigure.BootstrapContext=\
+com.algoreport.config.EmbeddedRedisConfig

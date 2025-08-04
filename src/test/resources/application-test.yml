@@ -1,0 +1,52 @@
+# 테스트 환경 설정
+spring:
+  # 데이터베이스 설정 (H2 인메모리)
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+        
+  # Redis 설정 (Embedded Redis가 동적으로 설정)
+  data:
+    redis:
+      host: localhost
+      port: 6370  # EmbeddedRedisConfig에서 동적으로 변경됨
+      timeout: 2000ms
+      
+  # Kafka 테스트 설정 (비활성화)
+  kafka:
+    enabled: false
+
+# 테스트용 플래그
+test:
+  embedded-redis:
+    enabled: false  # 기본적으로 비활성화
+    
+# 로깅 설정 (테스트 시 로그 최소화)
+logging:
+  level:
+    com.algoreport: DEBUG
+    org.springframework: WARN
+    org.hibernate: WARN
+    redis.embedded: WARN
+    
+# 테스트용 JWT 설정
+jwt:
+  secret: test-secret-key-for-testing-purposes-only-very-long-key
+  expiration: 3600000 # 1시간
+
+# 테스트용 외부 API 설정
+solved-ac:
+  api:
+    base-url: https://solved.ac/api/v3
+    timeout: 5000ms

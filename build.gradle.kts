@@ -77,6 +77,11 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("io.mockk:mockk:1.13.10")
+    
+    // Embedded Redis for Testing
+    testImplementation("it.ozimov:embedded-redis:0.7.3") {
+        exclude(group = "org.slf4j", module = "slf4j-simple")
+    }
     testImplementation("io.kotest:kotest-runner-junit5:5.8.1")
     testImplementation("io.kotest:kotest-assertions-core:5.8.1")
     testImplementation("io.kotest.extensions:kotest-extensions-spring:1.3.0")
@@ -96,7 +101,10 @@ tasks.withType<KotlinCompile> {
 tasks.withType<Test> {
     useJUnitPlatform()
     maxHeapSize = "2g"
-    jvmArgs = listOf("-XX:MaxMetaspaceSize=512m")
+    jvmArgs = listOf(
+        "-XX:MaxMetaspaceSize=512m",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED"
+    )
 }
 
 // QueryDSL 설정

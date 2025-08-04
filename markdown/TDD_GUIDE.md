@@ -366,6 +366,171 @@ init {
 
 **🎯 교훈**: 구현 코드가 올바른데 테스트가 실패한다면, 테스트 코드의 구조적 문제를 먼저 의심하라!
 
+---
+
+## 🚨 **BehaviorSpec Mock 격리 문제 - 매번 반복되는 실수! (필수 숙지)**
+
+### **⚠️ 심각한 문제: Mock 인스턴스 공유로 인한 테스트 간섭**
+
+**문제 상황**: PersonalStatsRefreshSagaUnitTest에서 반복 발생하는 테스트 실패
+
+**원인**: 클래스 레벨 Mock 인스턴스를 여러 테스트에서 공유하여 서로 간섭
+
+```kotlin
+// ❌ 문제가 있는 방식 - 클래스 레벨 Mock 공유
+class PersonalStatsRefreshSagaUnitTest : BehaviorSpec({
+
+    val userRepository: UserRepository = mockk()  // 클래스 레벨 Mock
+    val analysisService: AnalysisService = mockk()
+    val solvedacApiClient: SolvedacApiClient = mockk()
+    
+    val personalStatsRefreshSaga: PersonalStatsRefreshSaga = PersonalStatsRefreshSaga(
+        userRepository, analysisService, ..., solvedacApiClient, ...
+    )
+
+    given("첫 번째 테스트") {
+        `when`("존재하지 않는 사용자") {
+            every { userRepository.findAllActiveUserIds() } returns emptyList()
+            every { analysisService.deletePersonalAnalysis(any()) } just Runs
+            // ... 첫 번째 테스트 실행
+        }
+    }
+
+    given("두 번째 테스트") {
+        `when`("정상 사용자") {
+            // 💥 문제: 첫 번째 테스트의 Mock 설정이 남아있음!
+            // analysisService.deletePersonalAnalysis() 호출이 기록되어 있어서 
+            // verify(exactly = 0) { analysisService.deletePersonalAnalysis(any()) } 실패!
+        }
+    }
+})
+```
+
+### **✅ 올바른 해결방법: 테스트별 독립적인 Mock 인스턴스**
+
+```kotlin
+// ✅ 올바른 방식 - 각 테스트마다 독립적인 Mock 인스턴스 생성
+class PersonalStatsRefreshSagaUnitTest : BehaviorSpec({
+
+    given("존재하지 않는 사용자 시나리오") {
+        `when`("존재하지 않는 사용자에 대해 통계 갱신을 요청하면") {
+            then("즉시 실패하고 보상 트랜잭션이 실행되어야 한다") {
+                // 독립적인 Mock 인스턴스 생성
+                val userRepo = mockk<UserRepository>()
+                val analysisService = mockk<AnalysisService>()
+                val apiClient = mockk<SolvedacApiClient>()
+                val outboxService = mockk<OutboxService>()
+                
+                every { userRepo.findAllActiveUserIds() } returns emptyList()
+                every { analysisService.deletePersonalAnalysis(any()) } just Runs
+                every { outboxService.publishEvent(any(), any(), any(), any()) } returns UUID.randomUUID()
+
+                val saga = PersonalStatsRefreshSaga(userRepo, analysisService, ..., apiClient, ..., outboxService)
+                val result = saga.start(request)
+
+                result.sagaStatus shouldBe SagaStatus.FAILED
+                result.compensationExecuted shouldBe true
+                
+                verify(exactly = 1) { analysisService.deletePersonalAnalysis("non-existent-user") }
+            }
+        }
+    }
+
+    given("정상 사용자 시나리오") {  // 완전히 분리된 테스트
+        `when`("정상적인 사용자 데이터 처리") {
+            then("성공적으로 완료되어야 한다") {
+                // 새로운 독립적인 Mock 인스턴스 생성
+                val userRepo = mockk<UserRepository>()
+                val analysisService = mockk<AnalysisService>()  // 첫 번째 테스트와 완전히 독립!
+                val apiClient = mockk<SolvedacApiClient>()
+                val outboxService = mockk<OutboxService>()
+                
+                every { userRepo.findAllActiveUserIds() } returns listOf("test-user")
+                // analysisService.deletePersonalAnalysis() 호출 기록이 없음!
+                
+                val saga = PersonalStatsRefreshSaga(userRepo, analysisService, ..., apiClient, ..., outboxService)
+                val result = saga.start(request)
+
+                // ✅ 성공: 이 Mock 인스턴스에는 deletePersonalAnalysis() 호출 기록이 없음
+                verify(exactly = 0) { analysisService.deletePersonalAnalysis(any()) }
+            }
+        }
+    }
+})
+```
+
+### **🔥 Mock 격리 필수 원칙**
+
+#### **1. Mock 인스턴스 생성 위치**
+```kotlin
+// ❌ 절대 금지: 클래스 레벨 Mock 선언
+class SomeTest : BehaviorSpec({
+    val mockService = mockk<Service>()  // 여러 테스트에서 공유됨!
+    
+// ✅ 권장: then 블록 내부에서 Mock 생성
+class SomeTest : BehaviorSpec({
+    given("시나리오") {
+        `when`("조건") {
+            then("결과") {
+                val mockService = mockk<Service>()  // 이 테스트에서만 사용
+            }
+        }
+    }
+})
+```
+
+#### **2. Mock 설정 스코프**
+```kotlin
+// ❌ 문제: given/when 레벨에서 Mock 설정
+given("시나리오") {
+    every { mockService.someMethod() } returns "value"  // 여러 then에서 공유
+    
+    then("테스트 1") { /* 영향받음 */ }
+    then("테스트 2") { /* 영향받음 */ }
+}
+
+// ✅ 해결: then 블록 내부에서 Mock 설정
+given("시나리오") {
+    then("테스트 1") {
+        val mockService = mockk<Service>()
+        every { mockService.someMethod() } returns "value1"  // 이 테스트에서만 유효
+    }
+    
+    then("테스트 2") {
+        val mockService = mockk<Service>()
+        every { mockService.someMethod() } returns "value2"  // 독립적인 설정
+    }
+}
+```
+
+### **📋 Mock 격리 체크리스트 (반드시 확인!)**
+
+**테스트 작성 전:**
+- [ ] Mock 인스턴스를 클래스 레벨에서 선언하고 있지 않은가?
+- [ ] 여러 테스트에서 동일한 Mock 인스턴스를 공유하고 있지 않은가?
+- [ ] Mock 설정을 `given`/`when` 레벨에서 하고 있지 않은가?
+
+**테스트 실패 시:**
+- [ ] "should not be called" 오류 → Mock 호출 기록이 남아있는지 확인
+- [ ] "Verification failed" 오류 → 다른 테스트의 Mock 호출이 간섭하는지 확인
+- [ ] Mock 인스턴스가 테스트 간에 공유되고 있는지 확인
+
+**수정 방법:**
+- [ ] 각 `then` 블록 내부에서 독립적인 Mock 인스턴스 생성
+- [ ] Mock 설정도 `then` 블록 내부에서 수행
+- [ ] 필요 시 `given` 블록을 여러 개로 분리하여 완전 격리
+
+### **🎯 Mock 격리 핵심 기억사항**
+
+**🚨 기억하세요**: BehaviorSpec에서 Mock을 클래스 레벨에서 선언하면 **100% 테스트 간섭 문제 발생**합니다!
+
+**✅ 해결책**: 
+1. **Mock은 항상 `then` 블록 내부에서 생성**
+2. **각 테스트는 독립적인 Mock 인스턴스 사용**
+3. **의심스러우면 `given` 블록을 분리해서 완전 격리**
+
+---
+
 ### **🔥 절대 잊지 말 것 - 테스트 작성 시 필수 확인사항**
 
 **테스트 작성 전 3초만 투자하세요:**

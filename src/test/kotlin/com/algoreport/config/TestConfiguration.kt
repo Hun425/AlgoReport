@@ -5,21 +5,26 @@ import com.algoreport.collector.SubmissionSyncService
 import com.algoreport.collector.SubmissionRepository
 import com.algoreport.collector.dto.*
 import com.algoreport.config.outbox.OutboxService
+import com.algoreport.module.analysis.*
 import org.mockito.Mockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
+import java.time.LocalDateTime
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 테스트용 Mock Bean 설정
  */
 @TestConfiguration
-class TestConfiguration {
+open class TestConfiguration {
     
     @Bean
     @Primary
-    fun testSolvedacApiClient(): SolvedacApiClient {
-        return object : SolvedacApiClient {
+    open fun testSolvedacApiClient(): SolvedacApiClient {
+        return object : SolvedacApiClient {            
+            var simulateSubmissionFailure = false
+            
             override fun getUserInfo(handle: String): UserInfo {
                 // 존재하지 않는 핸들에 대해서는 예외 발생
                 if (handle.startsWith("non_existent_")) {
@@ -51,6 +56,9 @@ class TestConfiguration {
             }
             
             override fun getSubmissions(handle: String, page: Int): SubmissionList {
+                if (simulateSubmissionFailure) {
+                    throw RuntimeException("Simulated solved.ac API submission failure")
+                }
                 return SubmissionList(count = 0, items = emptyList())
             }
             
@@ -71,19 +79,19 @@ class TestConfiguration {
     
     @Bean
     @Primary  
-    fun mockSubmissionSyncService(): SubmissionSyncService {
+    open fun mockSubmissionSyncService(): SubmissionSyncService {
         return Mockito.mock(SubmissionSyncService::class.java)
     }
     
     @Bean
     @Primary
-    fun mockSubmissionRepository(): SubmissionRepository {
+    open fun mockSubmissionRepository(): SubmissionRepository {
         return Mockito.mock(SubmissionRepository::class.java)
     }
     
     @Bean
     @Primary
-    fun mockOutboxService(): OutboxService {
+    open fun mockOutboxService(): OutboxService {
         // OutboxService는 class이므로 Mockito로 mock하고 적절한 반환값 설정
         val mockService = Mockito.mock(OutboxService::class.java)
         
@@ -98,4 +106,11 @@ class TestConfiguration {
         return mockService
     }
     
+
+    // AnalysisCacheService는 실제 Embedded Redis를 사용하도록 Mock 제거
+    @Bean
+    @Primary
+    open fun mockElasticsearchService(): ElasticsearchService {
+        return Mockito.mock(ElasticsearchService::class.java)
+    }
 }
