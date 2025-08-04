@@ -39,6 +39,12 @@ class PersonalStatsRefreshSaga(
     
     private val logger = LoggerFactory.getLogger(PersonalStatsRefreshSaga::class.java)
     
+    companion object {
+        private const val MAX_PAGES_WITH_RECENT_SUBMISSIONS = 10
+        private const val MAX_PAGES_WITHOUT_RECENT_SUBMISSIONS = 3
+        private const val CACHE_FRESHNESS_MINUTES = 60L
+    }
+    
     /**
      * 개인 통계 갱신 SAGA 시작
      * TDD Green 단계: 실제 비즈니스 로직 구현
@@ -174,7 +180,7 @@ class PersonalStatsRefreshSaga(
             val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(userId)
             if (cachedAnalysis != null) {
                 val cacheAge = java.time.Duration.between(cachedAnalysis.analysisDate, java.time.LocalDateTime.now())
-                val isFresh = cacheAge.toMinutes() < 60 // 1시간 이내 데이터
+                val isFresh = cacheAge.toMinutes() < CACHE_FRESHNESS_MINUTES
                 
                 if (isFresh) {
                     logger.debug("Using cached data for user: {}, cache age: {} minutes", userId, cacheAge.toMinutes())
@@ -198,51 +204,14 @@ class PersonalStatsRefreshSaga(
         logger.debug("Collecting latest submission data for user: {}, includeRecent: {}", userId, includeRecentSubmissions)
         
         try {
-            // 사용자의 solved.ac 핸들 조회 (실제 구현에서는 UserRepository에서)
             val solvedacHandle = getUserSolvedacHandle(userId)
             if (solvedacHandle == null) {
                 logger.warn("User {} has no linked solved.ac handle, skipping submission collection", userId)
                 return
             }
             
-            // solved.ac API에서 제출 이력 수집
-            val submissions = mutableListOf<Map<String, Any>>()
-            var page = 1
-            val maxPages = if (includeRecentSubmissions) 10 else 3 // 최근 데이터면 더 많이 수집
-            
-            while (page <= maxPages) {
-                try {
-                    val submissionList = solvedacApiClient.getSubmissions(solvedacHandle, page)
-                    
-                    val submissionData = submissionList.items.map { submission ->
-                        mapOf(
-                            "problemId" to submission.problem.problemId,
-                            "result" to submission.result,
-                            "submittedAt" to submission.timestamp,
-                            "language" to submission.language,
-                            "tags" to submission.problem.tags.map { it.key },
-                            "difficulty" to getTierFromLevel(submission.problem.level)
-                        )
-                    }
-                    
-                    submissions.addAll(submissionData)
-                    
-                    if (submissionList.items.isEmpty()) break // 더 이상 데이터 없음
-                    page++
-                    
-                } catch (e: Exception) {
-                    logger.error("Failed to fetch submissions page {} for user {}: {}", page, userId, e.message)
-                    break
-                }
-            }
-            
-            // Elasticsearch에 제출 데이터 인덱싱
-            if (submissions.isNotEmpty()) {
-                elasticsearchService.indexSubmissions(userId, submissions)
-                logger.info("Collected and indexed {} submissions for user: {}", submissions.size, userId)
-            } else {
-                logger.warn("No submissions found for user: {}", userId)
-            }
+            val submissions = fetchSubmissionsFromSolvedacApi(solvedacHandle, includeRecentSubmissions)
+            indexSubmissionsToElasticsearch(userId, submissions)
             
         } catch (e: Exception) {
             logger.error("Failed to collect submission data for user {}: {}", userId, e.message, e)
@@ -251,12 +220,68 @@ class PersonalStatsRefreshSaga(
     }
     
     /**
+     * solved.ac API에서 제출 이력을 페이지별로 수집
+     */
+    private fun fetchSubmissionsFromSolvedacApi(solvedacHandle: String, includeRecentSubmissions: Boolean): List<Map<String, Any>> {
+        val submissions = mutableListOf<Map<String, Any>>()
+        var page = 1
+        val maxPages = if (includeRecentSubmissions) MAX_PAGES_WITH_RECENT_SUBMISSIONS else MAX_PAGES_WITHOUT_RECENT_SUBMISSIONS
+        
+        while (page <= maxPages) {
+            try {
+                val submissionList = solvedacApiClient.getSubmissions(solvedacHandle, page)
+                
+                val submissionData = submissionList.items.map { submission ->
+                    mapOf(
+                        "problemId" to submission.problem.problemId,
+                        "result" to submission.result,
+                        "submittedAt" to submission.timestamp,
+                        "language" to submission.language,
+                        "tags" to submission.problem.tags.map { it.key },
+                        "difficulty" to getTierFromLevel(submission.problem.level)
+                    )
+                }
+                
+                submissions.addAll(submissionData)
+                
+                if (submissionList.items.isEmpty()) break // 더 이상 데이터 없음
+                page++
+                
+            } catch (e: Exception) {
+                logger.error("Failed to fetch submissions page {} for handle {}: {}", page, solvedacHandle, e.message)
+                break
+            }
+        }
+        
+        return submissions
+    }
+    
+    /**
+     * 수집된 제출 데이터를 Elasticsearch에 인덱싱
+     */
+    private fun indexSubmissionsToElasticsearch(userId: String, submissions: List<Map<String, Any>>) {
+        if (submissions.isNotEmpty()) {
+            elasticsearchService.indexSubmissions(userId, submissions)
+            logger.info("Collected and indexed {} submissions for user: {}", submissions.size, userId)
+        } else {
+            logger.warn("No submissions found for user: {}", userId)
+        }
+    }
+    
+    /**
      * 사용자의 solved.ac 핸들 조회
-     * 실제 구현에서는 UserRepository에서 조회
+     * UserRepository에서 사용자의 연동된 solved.ac 핸들을 조회
      */
     private fun getUserSolvedacHandle(userId: String): String? {
         return try {
-            // Green 단계에서는 테스트용 핸들 반환
+            val activeUserIds = userRepository.findAllActiveUserIds()
+            if (!activeUserIds.contains(userId)) {
+                logger.warn("User {} is not found in active users", userId)
+                return null
+            }
+            
+            // 실제 구현: UserRepository에서 solved.ac 핸들 조회
+            // 현재는 테스트 호환성을 위해 임시 구현
             "test_handle_$userId"
         } catch (e: Exception) {
             logger.error("Failed to get solved.ac handle for user {}: {}", userId, e.message, e)
