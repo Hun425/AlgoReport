@@ -12,26 +12,6 @@ import io.mockk.mockk
 import java.time.LocalDateTime
 
 /**
- * 개인 대시보드 응답 데이터 모델
- * TDD RED 단계: 테스트에서 사용할 응답 구조 정의
- */
-data class PersonalDashboardResponse(
-    val userId: String,
-    val totalSolved: Int,
-    val currentTier: Int,
-    val heatmapData: Map<String, Int>, // "2024-01-01" -> 문제해결수
-    val tagSkillsRadar: Map<String, Double>, // 태그 -> 숙련도 (0.0-1.0)
-    val difficultyDistribution: Map<String, Int>, // 난이도 -> 문제수
-    val recentActivity: Map<String, Int>, // "last7days", "last30days" -> 문제수
-    val cacheHit: Boolean = false,
-    val responseTimeMs: Long = 0,
-    val dataSource: String = "LIVE",
-    val lastUpdated: LocalDateTime = LocalDateTime.now(),
-    val isNewUser: Boolean = false,
-    val message: String? = null
-)
-
-/**
  * 개인 학습 대시보드 서비스 단위 테스트
  * TDD RED 단계: Mock 기반 단위 테스트 작성
  * 
@@ -58,6 +38,10 @@ class PersonalDashboardServiceUnitTest : BehaviorSpec() {
                     every { userRepository.findAllActiveUserIds() } returns listOf("test-user-123")
                     every { analysisCacheService.getPersonalAnalysisFromCache("test-user-123") } returns null
                     every { elasticsearchService.aggregateTagSkills("test-user-123") } returns mapOf("dp" to 0.8, "graph" to 0.6)
+                    every { elasticsearchService.aggregateSolvedByDifficulty("test-user-123") } returns mapOf("Gold" to 45, "Silver" to 55, "Bronze" to 50)
+                    every { elasticsearchService.aggregateRecentActivity("test-user-123") } returns mapOf(
+                        "2024-08-01" to 3, "2024-08-02" to 2, "2024-08-03" to 1
+                    )
                     
                     val personalDashboardService = PersonalDashboardService(userRepository, analysisCacheService, elasticsearchService)
                     val result = personalDashboardService.getPersonalDashboard("test-user-123")
@@ -75,6 +59,8 @@ class PersonalDashboardServiceUnitTest : BehaviorSpec() {
                     
                     every { userRepository.findAllActiveUserIds() } returns listOf("test-user-123")
                     every { analysisCacheService.getPersonalAnalysisFromCache("test-user-123") } returns null
+                    every { elasticsearchService.aggregateTagSkills("test-user-123") } returns mapOf("dp" to 0.8)
+                    every { elasticsearchService.aggregateSolvedByDifficulty("test-user-123") } returns mapOf("Gold" to 45)
                     every { elasticsearchService.aggregateRecentActivity("test-user-123") } returns mapOf(
                         "2024-01-01" to 3, "2024-01-02" to 1
                     )
@@ -99,6 +85,8 @@ class PersonalDashboardServiceUnitTest : BehaviorSpec() {
                         "dp" to 0.8, "graph" to 0.6, "greedy" to 0.9, "implementation" to 0.7,
                         "math" to 0.5, "string" to 0.3, "geometry" to 0.2, "data_structures" to 0.4
                     )
+                    every { elasticsearchService.aggregateSolvedByDifficulty("test-user-123") } returns mapOf("Gold" to 50)
+                    every { elasticsearchService.aggregateRecentActivity("test-user-123") } returns mapOf("2024-08-01" to 2)
                     
                     val personalDashboardService = PersonalDashboardService(userRepository, analysisCacheService, elasticsearchService)
                     val result = personalDashboardService.getPersonalDashboard("test-user-123")
@@ -204,6 +192,8 @@ class PersonalDashboardServiceUnitTest : BehaviorSpec() {
                     every { userRepository.findAllActiveUserIds() } returns listOf("refresh-user-789")
                     every { analysisCacheService.getPersonalAnalysisFromCache("refresh-user-789") } returns null
                     every { elasticsearchService.aggregateTagSkills("refresh-user-789") } returns mapOf("dp" to 0.9)
+                    every { elasticsearchService.aggregateSolvedByDifficulty("refresh-user-789") } returns mapOf("Gold" to 100)
+                    every { elasticsearchService.aggregateRecentActivity("refresh-user-789") } returns mapOf("2024-08-04" to 5)
                     
                     val personalDashboardService = PersonalDashboardService(userRepository, analysisCacheService, elasticsearchService)
                     val result = personalDashboardService.getPersonalDashboard("refresh-user-789", forceRefresh = true)
@@ -215,41 +205,5 @@ class PersonalDashboardServiceUnitTest : BehaviorSpec() {
                 }
             }
         }
-    }
-}
-
-/**
- * 개인 대시보드 서비스 (빈 구현체)
- * TDD RED 단계: 테스트 실패를 위한 기본 구현 (Fake It 전략)
- */
-class PersonalDashboardService(
-    private val userRepository: UserRepository,
-    private val analysisCacheService: AnalysisCacheService,
-    private val elasticsearchService: ElasticsearchService
-) {
-    
-    fun getPersonalDashboard(userId: String, forceRefresh: Boolean = false): PersonalDashboardResponse {
-        // TODO: [GREEN] 사용자 존재 여부 검증 로직 구현 필요
-        // TODO: [GREEN] 캐시 확인 및 TTL 검증 로직 구현 필요
-        // TODO: [GREEN] Elasticsearch 집계 쿼리를 통한 데이터 수집 구현 필요
-        // TODO: [GREEN] 잔디밭 히트맵 데이터 생성 로직 구현 필요
-        // TODO: [GREEN] 태그별 숙련도 레이더 차트 데이터 생성 로직 구현 필요
-        // TODO: [REFACTOR] 신규 사용자 감지 및 안내 메시지 로직 구현 필요
-        // TODO: [REFACTOR] 캐시 TTL 6시간 설정 및 성능 최적화 필요
-        
-        // RED 단계: 컴파일 오류만 해결, 모든 테스트 실패하도록 기본값 반환 (Fake It 전략)
-        return PersonalDashboardResponse(
-            userId = userId,
-            totalSolved = 0,           // 테스트는 150 기대 → 실패
-            currentTier = 0,           // 테스트는 12 기대 → 실패
-            heatmapData = emptyMap(),  // 테스트는 365개 기대 → 실패
-            tagSkillsRadar = emptyMap(), // 테스트는 8개 태그 기대 → 실패
-            difficultyDistribution = emptyMap(),
-            recentActivity = emptyMap(),
-            cacheHit = false,          // 테스트는 true 기대 → 실패
-            responseTimeMs = 1000,      // 테스트는 50ms 미만 기대 → 실패
-            isNewUser = false,         // 신규 사용자 테스트 실패
-            message = null             // 신규 사용자 안내 메시지 실패
-        )
     }
 }
