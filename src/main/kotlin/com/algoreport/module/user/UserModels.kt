@@ -63,6 +63,7 @@ enum class SagaStatus {
     PENDING,
     IN_PROGRESS,
     COMPLETED,
+    PARTIAL_SUCCESS, // 일부 단계 실패했지만 핵심 기능은 성공
     FAILED,
     COMPENSATED
 }

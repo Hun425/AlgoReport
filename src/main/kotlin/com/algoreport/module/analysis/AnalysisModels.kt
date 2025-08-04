@@ -84,3 +84,29 @@ enum class BatchStatus {
     COMPLETED,
     FAILED
 }
+
+/**
+ * 개인 통계 갱신 SAGA 요청 데이터
+ */
+data class PersonalStatsRefreshRequest(
+    val userId: String,
+    val includeRecentSubmissions: Boolean = true,
+    val forceRefresh: Boolean = false, // true면 캐시 무시하고 강제 갱신
+    val requestedBy: String = "SYSTEM" // 요청 주체 추적용
+)
+
+/**
+ * 개인 통계 갱신 SAGA 결과 데이터
+ */
+data class PersonalStatsRefreshResult(
+    val sagaStatus: SagaStatus,
+    val userId: String,
+    val dataCollectionCompleted: Boolean = false,
+    val elasticsearchIndexingCompleted: Boolean = false,
+    val cacheUpdateCompleted: Boolean = false,
+    val eventPublished: Boolean = false,
+    val usedCachedData: Boolean = false, // 캐시 데이터 활용 여부
+    val compensationExecuted: Boolean = false,
+    val errorMessage: String? = null,
+    val processingTimeMs: Long = 0L
+)

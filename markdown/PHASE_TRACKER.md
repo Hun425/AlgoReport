@@ -221,8 +221,8 @@
     - **배치 캐싱**: Pipeline 사용으로 대용량 캐시 성능 최적화
     - **보상 트랜잭션 강화**: 캐시 롤백 추가로 데이터 일관성 보장
 
-#### **4.2 PERSONAL_STATS_REFRESH_SAGA 구현** 📊 **신규 추가**
-- [ ] **Task 4-2-1**: [RED] 개인 통계 갱신 테스트
+#### **4.2 PERSONAL_STATS_REFRESH_SAGA 구현** 📊 **진행중** (2025-08-04)
+- [ ] **Task 4-2-1**: [RED] 개인 통계 갱신 테스트 작성 (진행중)
 - [ ] **Task 4-2-2**: [GREEN] Elasticsearch 집계 쿼리 구현
 - [ ] **Task 4-2-3**: [REFACTOR] 캐시 최적화
 
