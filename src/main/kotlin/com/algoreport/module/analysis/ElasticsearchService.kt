@@ -122,6 +122,7 @@ class ElasticsearchService {
             
             submissions.forEach { submission ->
                 val isAccepted = submission["result"] == "AC" || submission["result"] == "ACCEPTED"
+                @Suppress("UNCHECKED_CAST")
                 val tags = submission["tags"] as? List<String> ?: emptyList()
                 
                 tags.forEach { tag ->
