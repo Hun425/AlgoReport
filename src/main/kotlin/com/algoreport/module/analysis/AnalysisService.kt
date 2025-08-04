@@ -97,6 +97,13 @@ class AnalysisService {
     }
     
     /**
+     * 개인 분석 결과 설정 (캐시 데이터 활용용)
+     */
+    fun setPersonalAnalysis(userId: String, analysis: PersonalAnalysis) {
+        personalAnalyses[userId] = analysis
+    }
+    
+    /**
      * 그룹 분석 결과 조회
      */
     fun getGroupAnalysis(groupId: String): GroupAnalysis? {
