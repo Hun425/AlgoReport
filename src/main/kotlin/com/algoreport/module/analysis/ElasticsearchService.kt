@@ -60,8 +60,10 @@ class ElasticsearchService {
             personalStatsIndex[analysis.userId] = document.toMutableMap()
             logger.info("Successfully indexed personal analysis for user: {}", analysis.userId)
             
-            // TODO: 실제 Elasticsearch 인덱싱 구현
-            // elasticsearchClient.index(IndexRequest(indexName).id(analysis.userId).source(document))
+            // TODO: 실제 Elasticsearch 인덱싱 구현 필요
+            // 실제 구현 시 아래 코드 활용:
+            // val request = IndexRequest(indexName).id(analysis.userId).source(document)
+            // elasticsearchClient.index(request)
             
         } catch (e: Exception) {
             logger.error("Failed to index personal analysis for user {}: {}", analysis.userId, e.message, e)
@@ -90,12 +92,14 @@ class ElasticsearchService {
             
             logger.info("Successfully indexed {} submissions for user: {}", submissions.size, userId)
             
-            // TODO: 실제 Elasticsearch 벌크 인덱싱 구현
+            // TODO: 실제 Elasticsearch 벌크 인덱싱 구현 필요
+            // 실제 구현 시 아래 코드 활용:
             // val bulkRequest = BulkRequest()
             // submissions.forEach { submission ->
             //     bulkRequest.add(IndexRequest(indexName).source(submission))
             // }
-            // elasticsearchClient.bulk(bulkRequest)
+            // val response = elasticsearchClient.bulk(bulkRequest)
+            // if (response.hasFailures()) { throw RuntimeException("Bulk indexing failed") }
             
         } catch (e: Exception) {
             logger.error("Failed to index submissions for user {}: {}", userId, e.message, e)
@@ -136,13 +140,15 @@ class ElasticsearchService {
             
             logger.info("Calculated tag skills for user: {}, {} tags processed", userId, tagSkills.size)
             
-            // TODO: 실제 Elasticsearch 집계 쿼리 구현
+            // TODO: 실제 Elasticsearch 집계 쿼리 구현 필요
+            // 실제 구현 시 아래 코드 활용:
             // val searchRequest = SearchRequest("submissions-*")
             //     .source(SearchSourceBuilder()
             //         .query(QueryBuilders.termQuery("userId", userId))
             //         .aggregation(AggregationBuilders.terms("tags").field("tags")
             //             .subAggregation(AggregationBuilders.filter("accepted", 
             //                 QueryBuilders.termQuery("result", "AC")))))
+            // val response = elasticsearchClient.search(searchRequest)
             
             tagSkills
             
@@ -172,7 +178,15 @@ class ElasticsearchService {
             
             logger.info("Calculated difficulty distribution for user: {}, {} difficulties", userId, solvedByDifficulty.size)
             
-            // TODO: 실제 Elasticsearch 집계 쿼리 구현
+            // TODO: 실제 Elasticsearch 집계 쿼리 구현 필요
+            // 실제 구현 시 아래 코드 활용:
+            // val searchRequest = SearchRequest("submissions-*")
+            //     .source(SearchSourceBuilder()
+            //         .query(QueryBuilders.boolQuery()
+            //             .must(QueryBuilders.termQuery("userId", userId))
+            //             .must(QueryBuilders.termsQuery("result", "AC", "ACCEPTED")))
+            //         .aggregation(AggregationBuilders.terms("difficulty").field("difficulty")))
+            // val response = elasticsearchClient.search(searchRequest)
             
             solvedByDifficulty
             
@@ -214,13 +228,16 @@ class ElasticsearchService {
             
             logger.info("Calculated recent activity for user: {}", userId)
             
-            // TODO: 실제 Elasticsearch 날짜 집계 쿼리 구현
+            // TODO: 실제 Elasticsearch 날짜 집계 쿼리 구현 필요
+            // 실제 구현 시 아래 코드 활용:
             // val searchRequest = SearchRequest("submissions-*")
             //     .source(SearchSourceBuilder()
             //         .query(QueryBuilders.termQuery("userId", userId))
             //         .aggregation(AggregationBuilders.dateHistogram("activity")
             //             .field("submittedAt")
-            //             .calendarInterval(DateHistogramInterval.DAY)))
+            //             .calendarInterval(DateHistogramInterval.DAY)
+            //             .minDocCount(1)))
+            // val response = elasticsearchClient.search(searchRequest)
             
             activity
             
