@@ -270,4 +270,42 @@ class ElasticsearchService {
     fun hasSubmissionsIndex(userId: String): Boolean {
         return submissionsIndex.containsKey(userId) && submissionsIndex[userId]?.isNotEmpty() == true
     }
+    
+    /**
+     * 특정 태그들에 해당하는 문제들을 난이도 범위로 검색
+     * 
+     * @param tags 검색할 태그 목록
+     * @param minTier 최소 티어 (포함)
+     * @param maxTier 최대 티어 (포함)
+     * @return 검색된 문제 메타데이터 목록
+     */
+    fun searchProblemsByTags(tags: List<String>, minTier: Int, maxTier: Int): List<ProblemMetadata> {
+        // TODO: 실제 Elasticsearch 문제 검색 구현 필요
+        // Green 단계: 기본 구현을 위한 모의 데이터
+        return emptyList()
+    }
+    
+    /**
+     * 사용자가 이미 해결한 문제 ID 목록 조회
+     * 
+     * @param userId 사용자 ID
+     * @return 해결한 문제 ID 집합
+     */
+    fun getUserSolvedProblems(userId: String): Set<String> {
+        // TODO: 실제 Elasticsearch 해결 문제 조회 구현 필요
+        // Green 단계: 기본 구현을 위한 모의 데이터
+        return emptySet()
+    }
+    
+    /**
+     * 초보자를 위한 기본 추천 문제 조회
+     * 
+     * @param count 추천할 문제 개수
+     * @return 초보자용 추천 문제 목록
+     */
+    fun getBeginnerRecommendations(count: Int): List<ProblemMetadata> {
+        // TODO: 실제 Elasticsearch 초보자 문제 검색 구현 필요
+        // Green 단계: 기본 구현을 위한 모의 데이터
+        return emptyList()
+    }
 }
