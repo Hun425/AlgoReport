@@ -34,6 +34,7 @@ class AnalysisCacheService(
         // 캐시 키 패턴
         private const val PERSONAL_ANALYSIS_KEY_PREFIX = "analysis:personal:"
         private const val GROUP_ANALYSIS_KEY_PREFIX = "analysis:group:"
+        private const val GROUP_DASHBOARD_KEY_PREFIX = "dashboard:group:"
         private const val RECOMMENDATION_KEY_PREFIX = "recommendation:personal:"
         private const val META_LAST_UPDATE_KEY = "analysis:meta:last_update"
     }
@@ -290,6 +291,55 @@ class AnalysisCacheService(
             logger.debug("Evicted recommendation cache for user: {}", userId)
         } catch (e: Exception) {
             logger.error("Failed to evict recommendation cache for user {}: {}", userId, e.message, e)
+        }
+    }
+    
+    /**
+     * 스터디 그룹 대시보드 캐시 저장
+     */
+    fun cacheGroupDashboard(groupId: String, dashboard: StudyGroupDashboardResponse, ttlMinutes: Int = 120) {
+        try {
+            val key = "$GROUP_DASHBOARD_KEY_PREFIX$groupId"
+            val value = objectMapper.writeValueAsString(dashboard)
+            redisTemplate.opsForValue().set(key, value, ttlMinutes.toLong(), TimeUnit.MINUTES)
+            logger.debug("Cached group dashboard for group: {}", groupId)
+        } catch (e: Exception) {
+            logger.error("Failed to cache group dashboard for group {}: {}", groupId, e.message, e)
+        }
+    }
+    
+    /**
+     * 스터디 그룹 대시보드 캐시 조회
+     */
+    fun getGroupDashboardFromCache(groupId: String): StudyGroupDashboardResponse? {
+        return try {
+            val key = "$GROUP_DASHBOARD_KEY_PREFIX$groupId"
+            val cachedValue = redisTemplate.opsForValue().get(key)
+            
+            if (cachedValue != null) {
+                val dashboard = objectMapper.readValue(cachedValue, StudyGroupDashboardResponse::class.java)
+                logger.debug("Retrieved group dashboard from cache for group: {}", groupId)
+                dashboard
+            } else {
+                logger.debug("No cached group dashboard found for group: {}", groupId)
+                null
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to retrieve group dashboard from cache for group {}: {}", groupId, e.message, e)
+            null
+        }
+    }
+    
+    /**
+     * 스터디 그룹 대시보드 캐시 삭제
+     */
+    fun evictGroupDashboard(groupId: String) {
+        try {
+            val key = "$GROUP_DASHBOARD_KEY_PREFIX$groupId"
+            redisTemplate.delete(key)
+            logger.debug("Evicted group dashboard cache for group: {}", groupId)
+        } catch (e: Exception) {
+            logger.error("Failed to evict group dashboard cache for group {}: {}", groupId, e.message, e)
         }
     }
 }

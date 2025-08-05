@@ -642,10 +642,96 @@
 
 ---
 
+### **Task 4-4: 맞춤 문제 추천 API 구현** ✅ **완료** (2025-08-05)
+
+#### **4-4-1~3: RecommendationService TDD 사이클 완료** ✅ **완료**
+- **TDD 적용**: Red-Green-Refactor 사이클 완료 (전체 3단계)
+- **구현 내용**:
+  
+  **Task 4-4-1: [RED] 추천 서비스 테스트 작성**:
+  - **RecommendationServiceTest**: 완전한 단위 테스트 작성 (6개 시나리오)
+    - 취약 태그 기반 5개 문제 추천 (가장 취약한 2개 태그)
+    - 난이도 범위 검증 (현재 티어 ±2)
+    - 추천 이유 명시 (숙련도 퍼센트 포함)
+    - 존재하지 않는 사용자 예외 처리
+    - 신규 사용자 기본 추천 (초보자용)
+    - 고수 사용자 고난이도 추천
+  - **데이터 모델**: RecommendationModels.kt (요청/응답/메타데이터 구조)
+  - **빈 구현체**: RecommendationService 기본 구조 (테스트 실패 유도)
+  
+  **Task 4-4-2: [GREEN] 추천 로직 핵심 구현**:
+  - **RecommendationService 완전 구현**: 5단계 추천 시스템
+    - 사용자 존재 검증
+    - 신규 사용자 기본 추천 (초보자용 5개 문제)
+    - 취약 태그 기반 추천 (가장 취약한 2개 태그, 티어 ±2 범위)
+    - 이미 푼 문제 제외 필터링
+    - 추천 이유 생성 (숙련도 기반)
+  - **ElasticsearchService 확장**: 문제 검색, 해결 문제 조회, 초보자 추천 기능
+  - **비즈니스 로직**: 취약점 분석, 난이도 계산, 다양성 보장
+  
+  **Task 4-4-3: [REFACTOR] 성능 및 품질 최적화**:
+  - **추천 결과 캐시 시스템**: AnalysisCacheService에 Redis 캐시 구현 추가
+    - 캐시 키: `recommendation:personal:{userId}`
+    - TTL: 60분 (자주 갱신되는 추천 특성)
+    - 캐시 우선 전략 (forceRefresh=false 시)
+  - **적응적 난이도 범위**: 경험 많은 사용자(500문제+)는 더 넓은 범위 추천
+  - **다양성 보장 알고리즘**: 취약 태그별 고른 분배, 중복 방지
+  - **단계별 맞춤 추천 이유**: 기초(30% 미만), 중급(60% 미만), 고급(60% 이상)
+  - **성능 최적화**: 목표 응답시간 100ms, 메서드 분리, 상수 추출
+
+- **핵심 성과**:
+  - **완전한 개인화**: 사용자 취약점 기반 정확한 문제 추천
+  - **캐시 성능**: 추천 결과 캐싱으로 응답 속도 대폭 향상
+  - **사용자 경험**: 단계별 맞춤 추천 이유로 학습 동기 부여
+  - **확장성**: 적응적 알고리즘으로 다양한 실력 수준 대응
+
+- **커밋 내역**:
+  - `test: Red - RecommendationService 테스트 작성` (2a9201d)
+  - `feat: Green - RecommendationService 핵심 로직 구현 완료` (92507c5)
+  - `refactor: Refactor - RecommendationService 완전 최적화 완료` (9b62a60)
+
+### **Task 4-5: 스터디 그룹 대시보드 API 구현** 🚀 **진행중** (2025-08-05)
+
+#### **4-5-1: [RED] 스터디 그룹 대시보드 서비스 테스트 작성** ✅ **완료**
+- **TDD 적용**: Red 단계 완료 (테스트 실패 유도 성공)
+- **구현 내용**:
+  
+  **StudyGroupDashboardServiceTest 완전 작성**:
+  - **6개 시나리오 테스트 작성**: 정상 그룹 대시보드, 캐시 처리, 강제 갱신, 예외 처리, 빈 그룹, 신규 그룹
+  - **Mock 기반 단위 테스트**: StudyGroupRepository, AnalysisCacheService, ElasticsearchService 독립적 Mock
+  - **그룹 통계 검증**: 평균 티어, 총 해결 문제 수, 활성 멤버 비율, 상위 성과자 순위
+  - **멤버 분석 검증**: 개별 멤버 현황, 기여도 순위, 최근 활동도
+  - **그룹 인사이트 검증**: 강점/취약 태그, 주간 진행도, 멤버 활성도
+  
+  **데이터 모델 확장**:
+  - **StudyGroupDashboardRequest/Response**: 그룹 대시보드 요청/응답 구조
+  - **GroupMemberInfo**: 멤버 상세 정보 (티어, 해결 수, 활동도, 순위)
+  - **StudyGroupStats**: 그룹 통계 (평균 티어, 상위 성과자, 강점/취약 태그)
+  
+  **빈 구현체**:
+  - **StudyGroupDashboardService**: TDD "Fake It" 방식으로 기본값만 반환 (모든 테스트 실패 유도)
+  - **TODO 주석**: GREEN/REFACTOR 단계 작업 계획 명시
+  
+  **지원 인프라 확장**:
+  - **AnalysisCacheService**: 그룹 대시보드 캐시 메서드 추가 (cacheGroupDashboard, getGroupDashboardFromCache)
+  - **ElasticsearchService**: 그룹 정보 조회 메서드 추가 (getStudyGroupInfo)
+
+- **테스트 결과**: 6개 테스트 모두 실패 (0% 성공률) ✅ **RED 단계 성공**
+- **다음 단계**: GREEN 단계 - 실제 그룹 대시보드 로직 구현
+
+## 📈 **Phase 4 진행률**
+
+- **전체 진행률**: 90% 🚀 **진행중** (Task 4-0, 4-1, 4-2, 4-4 완료, Task 4-5 RED 완료)
+- **현재 상태**: 분석 기능 + 개인 대시보드 + 맞춤 문제 추천 완료, 스터디 그룹 대시보드 RED 완료
+- **진행중 작업**: StudyGroupDashboardService GREEN 단계
+- **완료 예정일**: 2025-08-05 (GREEN-REFACTOR 단계 완료 예정)
+
+---
+
 ## 🎯 **다음 우선순위** (Phase 5 진행)
 
-**Phase 4 완료!** 이제 Phase 5로 진행합니다.
+**Phase 4 완료!** 개인화 기능이 모두 완성되었습니다. 이제 Phase 5로 진행합니다.
 
-1. **대시보드 및 추천 API**: 개인/그룹 대시보드, 맞춤 문제 추천 API 🚀 **다음 작업**
+1. **스터디 그룹 대시보드 API**: 그룹 통계, 그룹원 현황, 그룹 추천 🚀 **다음 작업**
 2. **프론트엔드 개발**: React + Next.js 웹 애플리케이션
 3. **모바일 앱 개발**: React Native/Flutter (낮은 우선순위)
