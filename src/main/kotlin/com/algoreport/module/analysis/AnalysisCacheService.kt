@@ -28,11 +28,13 @@ class AnalysisCacheService(
         // 캐시 TTL 설정 (성능 vs 데이터 신선도 균형)
         private const val PERSONAL_ANALYSIS_TTL_HOURS = 6L  // 개인 분석: 6시간 (하루 4번 갱신)
         private const val GROUP_ANALYSIS_TTL_HOURS = 12L   // 그룹 분석: 12시간 (하루 2번 갱신)
+        private const val RECOMMENDATION_TTL_HOURS = 1L    // 추천 결과: 1시간 (자주 갱신)
         private const val META_DATA_TTL_HOURS = 24L        // 메타 데이터: 24시간
         
         // 캐시 키 패턴
         private const val PERSONAL_ANALYSIS_KEY_PREFIX = "analysis:personal:"
         private const val GROUP_ANALYSIS_KEY_PREFIX = "analysis:group:"
+        private const val RECOMMENDATION_KEY_PREFIX = "recommendation:personal:"
         private const val META_LAST_UPDATE_KEY = "analysis:meta:last_update"
     }
     
@@ -239,6 +241,55 @@ class AnalysisCacheService(
             }
         } catch (e: Exception) {
             logger.error("Failed to evict all analysis cache: {}", e.message, e)
+        }
+    }
+    
+    /**
+     * 개인 추천 결과 캐시 저장 (REFACTOR: 실제 구현)
+     */
+    fun cacheRecommendation(userId: String, recommendation: RecommendationResponse, ttlMinutes: Int = 60) {
+        try {
+            val key = "$RECOMMENDATION_KEY_PREFIX$userId"
+            val value = objectMapper.writeValueAsString(recommendation)
+            redisTemplate.opsForValue().set(key, value, ttlMinutes.toLong(), TimeUnit.MINUTES)
+            logger.debug("Cached recommendation for user: {}", userId)
+        } catch (e: Exception) {
+            logger.error("Failed to cache recommendation for user {}: {}", userId, e.message, e)
+        }
+    }
+    
+    /**
+     * 개인 추천 결과 캐시 조회 (REFACTOR: 실제 구현)
+     */
+    fun getRecommendationFromCache(userId: String): RecommendationResponse? {
+        return try {
+            val key = "$RECOMMENDATION_KEY_PREFIX$userId"
+            val cachedValue = redisTemplate.opsForValue().get(key)
+            
+            if (cachedValue != null) {
+                val recommendation = objectMapper.readValue(cachedValue, RecommendationResponse::class.java)
+                logger.debug("Retrieved recommendation from cache for user: {}", userId)
+                recommendation
+            } else {
+                logger.debug("No cached recommendation found for user: {}", userId)
+                null
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to retrieve recommendation from cache for user {}: {}", userId, e.message, e)
+            null
+        }
+    }
+    
+    /**
+     * 개인 추천 결과 캐시 삭제
+     */
+    fun evictRecommendation(userId: String) {
+        try {
+            val key = "$RECOMMENDATION_KEY_PREFIX$userId"
+            redisTemplate.delete(key)
+            logger.debug("Evicted recommendation cache for user: {}", userId)
+        } catch (e: Exception) {
+            logger.error("Failed to evict recommendation cache for user {}: {}", userId, e.message, e)
         }
     }
 }

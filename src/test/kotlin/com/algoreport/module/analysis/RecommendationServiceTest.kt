@@ -33,6 +33,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                     
                     // Mock 설정: 사용자 존재
                     every { userRepository.findAllActiveUserIds() } returns listOf("test-user-123")
+                    every { analysisCacheService.getRecommendationFromCache("test-user-123") } returns null // 캐시 미스
                     
                     // Mock 설정: 개인 분석 데이터 (DP 취약, Graph 보통)
                     val personalAnalysis = PersonalAnalysis(
@@ -52,6 +53,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                         strongTags = listOf("greedy", "implementation")
                     )
                     every { analysisCacheService.getPersonalAnalysisFromCache("test-user-123") } returns personalAnalysis
+                    every { analysisCacheService.cacheRecommendation("test-user-123", any(), any()) } returns Unit
                     
                     // Mock 설정: 추천 문제 데이터
                     val mockProblems = listOf(
@@ -83,6 +85,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                     val elasticsearchService = mockk<ElasticsearchService>()
                     
                     every { userRepository.findAllActiveUserIds() } returns listOf("test-user-456")
+                    every { analysisCacheService.getRecommendationFromCache("test-user-456") } returns null // 캐시 미스
                     
                     val personalAnalysis = PersonalAnalysis(
                         userId = "test-user-456",
@@ -96,6 +99,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                         strongTags = emptyList()
                     )
                     every { analysisCacheService.getPersonalAnalysisFromCache("test-user-456") } returns personalAnalysis
+                    every { analysisCacheService.cacheRecommendation("test-user-456", any(), any()) } returns Unit
                     
                     val mockProblems = listOf(
                         ProblemMetadata("2001", "구현 연습", "Bronze I", 5, listOf("implementation"), 8000, 5),
@@ -121,6 +125,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                     val elasticsearchService = mockk<ElasticsearchService>()
                     
                     every { userRepository.findAllActiveUserIds() } returns listOf("test-user-789")
+                    every { analysisCacheService.getRecommendationFromCache("test-user-789") } returns null // 캐시 미스
                     
                     val personalAnalysis = PersonalAnalysis(
                         userId = "test-user-789",
@@ -138,6 +143,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                         strongTags = listOf("dp")
                     )
                     every { analysisCacheService.getPersonalAnalysisFromCache("test-user-789") } returns personalAnalysis
+                    every { analysisCacheService.cacheRecommendation("test-user-789", any(), any()) } returns Unit
                     
                     val mockProblems = listOf(
                         ProblemMetadata("3001", "문자열 처리", "Gold III", 13, listOf("string"), 1500, 13),
@@ -190,6 +196,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                     val elasticsearchService = mockk<ElasticsearchService>()
                     
                     every { userRepository.findAllActiveUserIds() } returns listOf("new-user-999")
+                    every { analysisCacheService.getRecommendationFromCache("new-user-999") } returns null // 캐시 미스
                     every { analysisCacheService.getPersonalAnalysisFromCache("new-user-999") } returns null
                     
                     // 신규 사용자용 기본 추천 문제
@@ -198,6 +205,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                         ProblemMetadata("1001", "A-B", "Bronze V", 1, listOf("implementation"), 30000, 1)
                     )
                     every { elasticsearchService.getBeginnerRecommendations(5) } returns beginnerProblems
+                    every { analysisCacheService.cacheRecommendation("new-user-999", any(), any()) } returns Unit
                     
                     val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService)
                     val request = RecommendationRequest("new-user-999")
@@ -218,6 +226,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                     val elasticsearchService = mockk<ElasticsearchService>()
                     
                     every { userRepository.findAllActiveUserIds() } returns listOf("expert-user-777")
+                    every { analysisCacheService.getRecommendationFromCache("expert-user-777") } returns null // 캐시 미스
                     
                     val expertAnalysis = PersonalAnalysis(
                         userId = "expert-user-777",
@@ -236,6 +245,7 @@ class RecommendationServiceTest : BehaviorSpec() {
                         strongTags = listOf("dp", "graph")
                     )
                     every { analysisCacheService.getPersonalAnalysisFromCache("expert-user-777") } returns expertAnalysis
+                    every { analysisCacheService.cacheRecommendation("expert-user-777", any(), any()) } returns Unit
                     
                     val hardProblems = listOf(
                         ProblemMetadata("4001", "세그먼트 트리", "Platinum IV", 18, listOf("advanced_data_structures"), 300, 18),
