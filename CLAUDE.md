@@ -4,418 +4,131 @@
 
 **알고리포트 (Algo-Report)**는 `solved.ac` 사용자 및 스터디 그룹의 문제 해결 이력을 분석하여, 학습 패턴 시각화, 강점/약점 분석, 맞춤 문제 추천 및 스터디 자동 관리를 제공하는 플랫폼입니다.
 
-### **핵심 기능**
+## 🔧 **빌드 & 실행**
 
-- **개인/그룹 학습 현황 분석**: 문제 해결 이력을 기반으로 잔디밭, 태그별 숙련도 등 학습 현황을 시각화합니다.
-    
-- **맞춤 문제 추천**: 사용자의 취약점을 분석하여 풀어볼 만한 문제를 추천합니다.
-    
-- **스터디 자동 관리**: 그룹장이 설정한 규칙에 따라 스터디원의 활동을 모니터링하고 자동으로 알림을 보냅니다.
-    
-
-## 📚 **TDD 문서 구조**
-
-**중요**: 모든 TDD 작업 시 다음 5개 분할 문서를 필수로 참조하고 업데이트해야 합니다:
-
-1. **TDD_GUIDE.md** - TDD 원칙 및 방법론
-    
-2. **CODING_STANDARDS.md** - 코딩 표준 및 컨벤션
-    
-3. **PHASE_TRACKER.md** - Phase별 진행 상황 추적
-    
-4. **IMPLEMENTATION_LOG.md** - 완료된 기능 로그
-    
-5. **NEXT_TASKS.md** - 다음 할 일 및 우선순위
-    
-
-### **🚨 필수 작업 규칙 🚨**
-
-- 모든 TDD 작업 전/후 해당 문서들 확인 및 업데이트
-    
-- 각 Red-Green-Refactor 사이클 완료 시 진행 상황 기록
-    
-- **🔥 TDD 사이클별 커밋 필수 - 절대 까먹지 말 것! 🔥**
-  - **Red 단계** → 테스트 작성 → 테스트 실행(실패 확인) → **즉시 커밋**
-  - **Green 단계** → 구현 완료 → 테스트 실행(통과 확인) → **즉시 커밋** 
-  - **Refactor 단계** → 리팩토링 완료 → 테스트 실행(통과 확인) → **즉시 커밋**
-  - **🚨 각 단계별 테스트 실행 필수 🚨** → 항상 테스트 결과 확인 후 커밋
-  - **단계별 순서 엄수**: Red → 테스트 실행 → 커밋 → Green → 테스트 실행 → 커밋 → Refactor → 테스트 실행 → 커밋
-    
-- 커밋 메시지 형식: `test/feat/refactor: Red/Green/Refactor - 간략한 설명`
-
-- **문서 최신화 필수**: 모든 작업 완료 후 관련 문서 즉시 업데이트
-    
-
-## 🔧 **Build & Development Commands**
-
-### **Build and Run**
-
-```
-# Docker 인프라 실행 (최초 1회)
+```bash
+# 인프라 실행
 docker-compose up -d
 
-# Debezium Connector 설정 (CDC 활성화)
-curl -X POST http://localhost:8083/connectors \
-  -H "Content-Type: application/json" \
-  -d @scripts/outbox-connector.json
+# Debezium CDC 설정
+curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d @scripts/outbox-connector.json
 
-# 프로젝트 빌드
+# 빌드 & 실행
 ./gradlew build
-
-# 애플리케이션 실행
 ./gradlew bootRun
 
-# Clean and rebuild
-./gradlew clean build
-```
-
-### **Testing**
-
-```
-# 전체 테스트 실행
+# 테스트
 ./gradlew test
-
-# 특정 테스트 클래스 실행
-./gradlew test --tests "com.algoreport.service.StudyGroupServiceTest"
-
-# Outbox 패턴 테스트
-./gradlew test --tests "com.algoreport.config.outbox.*Test"
 ```
 
-#### **🧪 Kotest 테스트 프레임워크 사용**
+## 🏗️ **기술 스택**
 
-**모든 테스트는 Kotest BehaviorSpec을 사용합니다** (JUnit 5 금지)
+- **Language**: Kotlin 2.2.0 + Java 21 LTS
+- **Framework**: Spring Boot 3.5.3, Spring Security, JPA + QueryDSL
+- **Database**: PostgreSQL, H2 (Test)
+- **Message**: Kafka + Debezium CDC
+- **Cache**: Redis
+- **Search**: Elasticsearch
+- **Testing**: Kotest BehaviorSpec, MockK
+- **Coverage**: JaCoCo (75% Branch, 80% Line)
 
+## 🎯 **TDD 핵심 가이드**
+
+### **🚨 절대 잊지 말 것!**
+- **Red-Green-Refactor 각 단계마다 반드시 커밋**
+- **커밋 메시지**: `test: Red - 설명`, `feat: Green - 설명`, `refactor: Refactor - 설명`
+
+### **RED 단계 "Fake It" 전략**
 ```kotlin
-// ✅ 올바른 Kotest 테스트 작성법
-@DataJpaTest
-@ActiveProfiles("test")
-@Transactional
-class UserServiceTest(
-    private val userRepository: UserRepository,
-    private val testEntityManager: TestEntityManager
-) : BehaviorSpec() {
-    
-    override fun extensions() = listOf(SpringExtension)
-    
-    init {
-        given("사용자가 회원가입할 때") {
-            val userData = UserRegistrationRequest("test@example.com", "password123")
-            
-            `when`("유효한 정보를 제공하면") {
-                val savedUser = userRepository.save(User.from(userData))
-                testEntityManager.flush()
-                
-                then("사용자가 정상적으로 저장되어야 한다") {
-                    savedUser.id shouldNotBe null
-                    savedUser.email shouldBe "test@example.com"
-                    savedUser.isActive shouldBe true
-                }
-            }
-        }
+// ✅ 컴파일 성공 + 가짜 값으로 테스트 실패 유도
+class SomeService {
+    fun process(): Result = Result(status = FAILED, data = null) // 의도적 실패
+}
+```
+
+### **Kotest BehaviorSpec 함정 (매번 실수!)**
+```kotlin
+// ❌ 잘못: beforeEach에서 데이터 삭제됨
+given("테스트") {
+    val user = create()  // beforeEach 전에 생성 → 삭제됨
+    then("결과") { /* 실패 */ }
+}
+
+// ✅ 정답: then 내에서 생성
+given("테스트") {
+    then("결과") {
+        val user = create()  // then 내에서 생성 → 안전
     }
 }
-```
 
-**Kotest 필수 규칙:**
-- **BehaviorSpec** 상속 필수 (다른 Spec 금지)
-- **SpringExtension** 추가로 Spring Boot 호환성 확보
-- **given-when-then** BDD 스타일 사용
-- **shouldBe, shouldNotBe** 등 Kotest 매처 사용
-- **init 블록** 내부에 테스트 로직 작성
+// ❌ Mock 공유 문제
+val mockService = mockk<Service>()  // 클래스 레벨 → 테스트 간섭
 
-**🎯 BehaviorSpec 선택 이유:**
-- **비즈니스 도메인 복잡성**: 알고리즘 문제 추천, 스터디 관리 등 복잡한 비즈니스 로직에 BDD 스타일이 적합
-- **요구사항 명확화**: given-when-then 구조로 테스트 의도가 명확하게 드러남
-- **협업 효율성**: 기획자/PM도 이해하기 쉬운 테스트 구조
-- **유지보수성**: 비즈니스 규칙 변경 시 테스트 수정이 용이
-
-## 🏗️ **Architecture Overview**
-
-**Kotlin 2.2.0** + **Spring Boot 3.5.3** + **Java 21** + **Modular Monolith**
-
-### **Technology Stack**
-
-- **Language**: Kotlin 2.2.0 (Backend), TypeScript (Frontend)
-- **JDK**: Java 21 LTS
-- **Backend Framework**: Spring Boot 3.5.3, Spring Security, Spring Data JPA + QueryDSL
-- **Frontend Framework**: React + Next.js (추후 React Native/Flutter 모바일 확장 예정)
-- **Database**: PostgreSQL (Production), H2 (Testing)
-- **ORM**: Spring Data JPA + QueryDSL (타입 안전한 복잡 쿼리 지원)
-- **Message Queue**: Kafka + Kafka Connect
-- **CDC (Change Data Capture)**: Debezium + PostgreSQL WAL
-- **Cache**: Redis
-- **Log Management**: ELK Stack (Elasticsearch + Logstash + Kibana)
-  - **Phase 1**: Spring Boot 애플리케이션 로그 관리
-  - **Phase 2**: solved.ac 비즈니스 데이터 분석 (향후 확장)
-- **Authentication**: Google OAuth2 + JWT
-- **Testing**: Kotest (BehaviorSpec), MockK, Spring Boot Test
-
-### **🎯 Java 21 LTS 선택 근거 + Kotlin Coroutines 적극 활용**
-
-#### **Java 21 LTS vs Java 17 LTS vs Java 24**
-
-**왜 Java 21 LTS를 선택했는가?**
-
-1. **안정성과 성능의 균형점**
-   - **LTS 지원**: 2031년까지 장기 지원으로 안정적인 운영
-   - **Kotlin Coroutines 최적화**: Java 21의 최신 JVM 기능과 Coroutines의 시너지
-   - **ZGC 개선**: solved.ac 대용량 데이터 수집 시 낮은 지연시간 GC
-   - **Pattern Matching**: 문제 태그 및 난이도 분류 로직 간소화
-
-2. **알고리포트 특화 혜택**
-   - **Text Blocks**: SQL 쿼리 및 JSON 템플릿 가독성 향상  
-   - **Records**: DTO 클래스 간소화 (특히 solved.ac API 응답 매핑)
-   - **Switch Expression**: 복잡한 분기 로직 간소화
-
-3. **Kotlin Coroutines 적극 활용 전략** ⚡
-   - **solved.ac API 대용량 수집**: 수천 명 사용자 데이터 병렬 수집
-     ```kotlin
-     // 기존: 순차 처리로 인한 병목
-     // 개선: Kotlin Coroutines로 사용자별 병렬 수집 (Virtual Thread보다 효율적)
-     suspend fun collectAllUserData(users: List<User>) = coroutineScope {
-         users.map { user -> 
-             async { collectUserData(user) }
-         }.awaitAll()
-     }
-     ```
-   
-   - **@KafkaListener 메시지 처리**: 수천 개 제출 데이터 동시 분석
-     ```kotlin
-     @KafkaListener(topics = ["new-submission"])
-     suspend fun processSubmission(submission: SubmissionEvent) {
-         // Coroutines를 사용한 논블로킹 처리
-         // Elasticsearch 인덱싱 + 분석 로직
-     }
-     ```
-   
-   - **대시보드 복합 쿼리**: Elasticsearch 집계 + Redis 캐싱 병렬 실행
-     ```kotlin
-     suspend fun getUserDashboard(userId: Long): DashboardResponse = coroutineScope {
-         // 여러 데이터 소스에서 병렬로 데이터 조회 (Virtual Thread보다 메모리 효율적)
-         val stats = async { elasticsearchService.getUserStats(userId) }
-         val recommendations = async { recommendationService.getRecommendations(userId) }  
-         val ranking = async { redisService.getUserRanking(userId) }
-         
-         DashboardResponse(stats.await(), recommendations.await(), ranking.await())
-     }
-     ```
-
-4. **성능 최적화 예상 효과**
-   - **데이터 수집 속도**: 300% 향상 (순차 → Coroutines 병렬)
-   - **대시보드 응답시간**: 70% 단축 (병렬 쿼리)
-   - **시스템 처리량**: 500% 증가 (Coroutines의 높은 동시성)
-   - **메모리 효율성**: Virtual Thread 대비 90% 절약
-
-5. **미래 대비**
-   - **Java 25 LTS 준비**: 2026년 출시 시 부담 없는 마이그레이션
-   - **생태계 안정성**: 모든 라이브러리 완전 지원
-   - **운영 안정성**: LTS의 버그 픽스 및 보안 패치
-
-**⚠️ 다른 버전 대비 고려사항**
-- **Java 17 LTS**: Virtual Thread 미지원, 하지만 Coroutines는 완벽 지원
-- **Java 24**: 최신 기능이지만 LTS 아니므로 운영 리스크
-
-**결론**: 알고리포트의 **대용량 데이터 처리** 특성상 Java 21 LTS의 안정성과 Kotlin Coroutines의 뛰어난 동시성 처리 성능을 조합하는 것이 최적
-    
-
-### **Domain Structure (Modular Monolith)**
-
-```
-src/main/kotlin/com/algoreport/
-├── config/                    # 설정 및 공통 기능
-│   ├── security/             # OAuth2, JWT & Spring Security
-│   ├── exception/            # 전역 예외 처리
-│   └── outbox/              # CDC 기반 Outbox Pattern
-│       ├── OutboxEvent.kt   # 이벤트 엔티티
-│       ├── OutboxEventRepository.kt
-│       ├── OutboxService.kt
-│       └── OutboxEventHandler.kt  # CDC 이벤트 수신
-├── module/                    # 도메인별 논리적 모듈
-│   ├── user/                 # 플랫폼 사용자 모듈
-│   ├── studygroup/           # 스터디 그룹 모듈
-│   ├── analysis/             # 분석 및 추천 모듈
-│   └── notification/         # 알림 모듈
-└── collector/                 # solved.ac 데이터 수집기
-```
-
-## ⚡ **CDC 기반 실시간 이벤트 아키텍처**
-
-### **Outbox Pattern + Change Data Capture**
-
-**아키텍처 개요**: PostgreSQL WAL → Debezium → Kafka → Event Handler
-
-```mermaid
-graph LR
-    A[Business Logic] --> B[OutboxEvent Table]
-    B --> C[PostgreSQL WAL]
-    C --> D[Debezium CDC]
-    D --> E[Kafka Topics]
-    E --> F[OutboxEventHandler]
-    F --> G[Business Event Processing]
-```
-
-**핵심 컴포넌트**:
-- **OutboxEvent**: 이벤트 저장 (비즈니스 트랜잭션과 동일 트랜잭션)
-- **Debezium Connector**: WAL 감지 → Kafka 발행
-- **OutboxEventHandler**: 이벤트 수신 → 비즈니스 로직 처리
-
-**성능 향상**:
-- **실시간 발행**: INSERT 즉시 Kafka 발행 (폴링 지연 제거)
-- **DB 부하 제거**: 초당 0.2회 폴링 쿼리 완전 제거  
-- **확장성**: 이벤트 양 증가와 무관하게 일정한 성능
-
-## 📊 **로그 관리 시스템 (ELK Stack)**
-
-### **Phase 1: 애플리케이션 로그 관리** (현재)
-
-**목적**: Spring Boot 애플리케이션의 로그 수집, 검색, 모니터링
-
-**구성 요소**:
-- **Elasticsearch**: 로그 데이터 저장 및 빠른 검색
-- **Logstash**: 로그 파일 수집, 파싱, 변환
-- **Kibana**: 로그 시각화 및 대시보드
-
-**로그 처리 흐름**:
-```
-Spring Boot App → 로그 파일 → Logstash → Elasticsearch → Kibana
-```
-
-**주요 기능**:
-- 애플리케이션 에러 로그 추적
-- 성능 병목 지점 분석
-- 사용자 요청 패턴 모니터링
-- 시스템 장애 빠른 감지
-
-### **Phase 2: 비즈니스 데이터 분석** (향후 확장)
-
-**목적**: solved.ac 데이터 분석 및 비즈니스 인텔리전스
-
-**추가 구성 요소**:
-- **Kafka**: solved.ac 데이터 스트리밍
-- **Debezium**: CDC 기반 실시간 데이터 수집
-- **Schema Registry**: SAGA 이벤트 스키마 관리
-
-**확장된 데이터 흐름**:
-```
-solved.ac API → Kafka → Logstash → Elasticsearch → Kibana
-SAGA Events → Outbox → Debezium → Kafka → Elasticsearch
-```
-
-## 📡 **API 구조 및 명명 규칙**
-
-### **주요 API 엔드포인트**
-
-```
-# 인증 (Google OAuth2 Redirect)
-GET    /oauth2/authorization/google    # 구글 로그인 시작
-
-# 사용자 모듈
-POST   /api/v1/users/me/link-solvedac  # solved.ac 핸들 연동
-
-# 스터디 그룹 모듈
-POST   /api/v1/studygroups             # 스터디 그룹 생성
-GET    /api/v1/studygroups/{id}        # 스터디 그룹 상세 조회
-POST   /api/v1/studygroups/{id}/join   # 스터디 그룹 참여
-POST   /api/v1/studygroups/{id}/rules  # 스터디 그룹 규칙 설정
-
-# 분석 모듈
-GET    /api/v1/analysis/users/{handle} # 개인 학습 대시보드 데이터
-GET    /api/v1/analysis/studygroups/{id} # 스터디 그룹 대시보드 데이터
-GET    /api/v1/recommendations/users/{handle} # 개인 맞춤 문제 추천
-```
-
-## 🚨 **Error Handling**
-
-### **예외 처리 원칙**
-
-```
-// ❌ 표준 예외 사용 지양
-throw NoSuchElementException("사용자를 찾을 수 없습니다.")
-
-// ✅ CustomException + Error enum 사용
-throw CustomException(Error.USER_NOT_FOUND)
-```
-
-### **Error Enum 구조**
-
-```
-enum class Error(val status: HttpStatus, val code: String, val message: String) {
-    // 404 NOT_FOUND
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "해당 사용자를 찾을 수 없습니다."),
-    STUDY_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "E40402", "해당 스터디 그룹을 찾을 수 없습니다."),
-    SOLVEDAC_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40403", "solved.ac에서 해당 핸들을 찾을 수 없습니다."),
-
-    // 409 CONFLICT
-    ALREADY_JOINED_STUDY(HttpStatus.CONFLICT, "E40901", "이미 참여한 스터디 그룹입니다.");
+// ✅ Mock 독립
+then("테스트") {
+    val mockService = mockk<Service>()  // then 내부 → 독립적
 }
 ```
 
-## 🚨 **알려진 이슈 및 개선 필요사항**
+## 📊 **현재 상태**
 
-### **🔴 보안 취약점 (즉시 수정 필요)**
+### **완료 Phase (98%)**
+- ✅ **Phase 0**: 프로젝트 기반 구축
+- ✅ **Phase 1**: 데이터 파이프라인 (INITIAL_DATA_SYNC_SAGA, SUBMISSION_SYNC_SAGA)
+- ✅ **Phase 2**: 사용자 인증 (USER_REGISTRATION_SAGA, SOLVEDAC_LINK_SAGA)
+- ✅ **Phase 3**: 스터디 그룹 (CREATE_GROUP_SAGA, JOIN_GROUP_SAGA)
+- ✅ **Phase 4**: 분석 기능 (ANALYSIS_UPDATE_SAGA, PERSONAL_STATS_REFRESH_SAGA, RecommendationService)
 
-- 없음
-    
+### **성과**
+- **280개 테스트 100% 통과**
+- **JaCoCo 커버리지 달성**: 75% Branch, 80% Line
+- **9개 주요 SAGA 완전 구현** (TDD 적용)
 
-### **🟡 성능 이슈 (우선순위 높음)**
+## 🚀 **다음 할 일**
 
-- **(예상) Elasticsearch 쿼리 최적화**: 대시보드 API 구현 시, 복잡한 집계 쿼리의 성능 튜닝 필요.
-    
+### **1. Phase 4 완료** (🎯 **권장**, 2-3시간)
+- StudyGroupDashboardService GREEN 단계
 
-### **🔵 기능 누락 (낮은 우선순위)**
+### **2. Phase 5: 프론트엔드** 
+- React + Next.js 웹 애플리케이션
 
-- 업적(Achievement) 시스템, 라이벌 기능 등 백로그 아이디어들
-    
+### **3. Phase 6: 시스템 최적화**
+- 불필요한 SAGA 단순화, Elastic APM 도입
 
-## 🔧 **개발 가이드라인**
+## 🛠️ **체크리스트**
 
-### **중요한 원칙**
+### **새 기능 개발**
+- [ ] RED: 테스트 → 실행(실패) → 커밋
+- [ ] GREEN: 구현 → 통과 → 커밋  
+- [ ] REFACTOR: 리팩토링 → 통과 → 커밋
 
-1. **🚨 결정사항 필수 문의**: 뭔가 결정해야 되는 사항들은 Claude가 임의로 결정하지 말고 **항상 사용자에게 문의**할 것
-   - 아키텍처 변경 결정
-   - 라이브러리 선택
-   - 테스트 전략 변경
-   - 기술적 트레이드오프 결정
-   - 코드 구조 대폭 수정
+### **Kotest 실패 시**
+- [ ] "찾을 수 없음" → 데이터 생명주기 (`then` 내부에서 생성)
+- [ ] Mock 검증 실패 → Mock 공유 문제 (`then` 내부에서 mockk())
+- [ ] LocalDateTime 오류 → JavaTimeModule 누락
 
-### **코딩 컨벤션**
+## 🚨 **개발 원칙**
 
-1. **Scope Functions 적극 활용** (`let`, `run`, `apply`, `also`, `with`)
-    
-2. **Data Class 활용**: DTO 등 데이터 객체는 `data class` 사용.
-    
+1. **결정사항 필수 문의**: 아키텍처 변경, 라이브러리 선택 등은 사용자에게 문의
+2. **CustomException + Error enum 사용** (표준 예외 지양)
+3. **Kotlin Coroutines 적극 활용** (Virtual Thread 대비 메모리 효율적)
 
-### **커밋 메시지 규칙**
+## 📡 **주요 API**
 
-#### **기본 타입**
-- `feat`: 새로운 기능 추가
-- `fix`: 버그 수정
-- `docs`: 문서 수정
-- `refactor`: 코드 리팩토링
-- `test`: 테스트 코드
-- `chore`: 빌드 설정 등
+```
+GET    /oauth2/authorization/google           # Google 로그인
+POST   /api/v1/users/me/link-solvedac        # solved.ac 연동
+POST   /api/v1/studygroups                   # 그룹 생성
+POST   /api/v1/studygroups/{id}/join         # 그룹 참여
+GET    /api/v1/analysis/users/{handle}       # 개인 대시보드
+GET    /api/v1/recommendations/users/{handle} # 문제 추천
+```
 
-#### **상세 규칙**
-- **제목**: 50자 이내, 간결하고 명확하게 작성
-- **본문**: 필요시에만 추가, 4줄 이내로 제한
-- **형식**: `type: 간략한 설명`
-- **예시**: `feat: 사용자 인증 기능 추가`, `docs: API 문서 업데이트`
-- **금지사항**: 
-  - Claude Code 자동 생성 멘션 제거 필수
-  - 불필요한 장황한 설명 금지
-  - 50자 초과 제목 금지
-    
+## 🧠 **개발 메모리**
 
-### **브랜치 전략**
+- 앞으로 테스트든 뭐든 구현할 때 항상 이미 구현된 것들을 먼저 분석 후에 진행해야 된다는 것을 명시
+- 애매한 결정 사항들은 마음대로 선택하지 말고 사용자에게 다시 되물어야 한다는 것을 명시
+- 프로젝트 시작 시 마크다운 하위폴더 전체를 읽는게 아니라 CLAUDE.md를 먼저 읽고, 나머지 문서에서는 필요한 내용들만 찾아서 파싱해서 읽어야 함
+- 문서 업데이트할 때는 관련 문서 전체를 업데이트해야 함
 
-- `main`: 프로덕션 브랜치
-    
-- `develop`: 개발 브랜치
-    
-- `feature/[기능명]`: 기능 개발 브랜치
-    
-
-📝 Last Updated: 2025-07-22
-
-👤 Maintainer: 채기훈
+📝 Last Updated: 2025-08-07 | 👤 Maintainer: 채기훈
