@@ -44,10 +44,10 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                         analysisDate = java.time.LocalDateTime.now(),
                         totalSolved = 150,
                         currentTier = 12, // Gold
-                        tagSkills = mapOf("dp" to 0.8, "graph" to 0.6, "greedy" to 0.9),
+                        tagSkills = mapOf("dp" to 0.8, "graph" to 0.6, "greedy" to 0.9, "math" to 0.3),
                         solvedByDifficulty = mapOf("Gold" to 50, "Silver" to 100),
                         recentActivity = mapOf("last7days" to 7),
-                        weakTags = listOf("dp"),
+                        weakTags = listOf("math"),
                         strongTags = listOf("greedy", "graph")
                     )
                     
@@ -56,10 +56,10 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                         analysisDate = java.time.LocalDateTime.now(),
                         totalSolved = 80,
                         currentTier = 8, // Silver
-                        tagSkills = mapOf("implementation" to 0.7, "math" to 0.5, "dp" to 0.3),
+                        tagSkills = mapOf("implementation" to 0.7, "math" to 0.5, "dp" to 0.5),
                         solvedByDifficulty = mapOf("Silver" to 60, "Bronze" to 20),
                         recentActivity = mapOf("last7days" to 3),
-                        weakTags = listOf("dp", "graph"),
+                        weakTags = listOf("math", "graph"),
                         strongTags = listOf("implementation")
                     )
                     
@@ -68,10 +68,10 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                         analysisDate = java.time.LocalDateTime.now(),
                         totalSolved = 200,
                         currentTier = 16, // Platinum
-                        tagSkills = mapOf("dp" to 0.9, "graph" to 0.8, "tree" to 0.7),
+                        tagSkills = mapOf("dp" to 0.9, "graph" to 0.8, "tree" to 0.7, "math" to 0.4),
                         solvedByDifficulty = mapOf("Platinum" to 50, "Gold" to 80, "Silver" to 70),
                         recentActivity = mapOf("last7days" to 10),
-                        weakTags = listOf("string"),
+                        weakTags = listOf("math"),
                         strongTags = listOf("dp", "graph", "tree")
                     )
                     
@@ -112,7 +112,7 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                     
                     // 그룹 강점/취약 태그 검증
                     result.groupStats.groupStrongTags.contains("dp") shouldBe true
-                    result.groupStats.groupWeakTags.contains("dp") shouldBe true // 일부 멤버는 취약
+                    result.groupStats.groupWeakTags.contains("math") shouldBe true // math는 평균 0.5로 취약
                 }
                 
                 then("캐시된 데이터가 있으면 캐시에서 반환해야 한다") {
