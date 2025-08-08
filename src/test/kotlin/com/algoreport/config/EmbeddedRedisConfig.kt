@@ -10,6 +10,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.serializer.StringRedisSerializer
+
 import redis.embedded.RedisServer
 import java.io.IOException
 import java.net.ServerSocket
@@ -33,11 +34,7 @@ class EmbeddedRedisConfig {
     @PostConstruct
     fun startRedis() {
         try {
-            redisServer = RedisServer.builder()
-                .port(redisPort)
-                .setting("maxmemory 128M")
-                .build()
-            
+            redisServer = RedisServer(redisPort)
             redisServer?.start()
             logger.info("Embedded Redis started on port: {}", redisPort)
         } catch (e: Exception) {

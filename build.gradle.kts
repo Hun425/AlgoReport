@@ -78,10 +78,8 @@ dependencies {
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("io.mockk:mockk:1.13.10")
     
-    // Embedded Redis for Testing
-    testImplementation("it.ozimov:embedded-redis:0.7.3") {
-        exclude(group = "org.slf4j", module = "slf4j-simple")
-    }
+    // Embedded Redis for Testing - ARM64 호환성 개선
+    testImplementation("com.github.codemonstur:embedded-redis:1.4.3")
     testImplementation("io.kotest:kotest-runner-junit5:5.8.1")
     testImplementation("io.kotest:kotest-assertions-core:5.8.1")
     testImplementation("io.kotest.extensions:kotest-extensions-spring:1.3.0")
