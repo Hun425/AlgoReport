@@ -2,6 +2,7 @@ package com.algoreport.module.analysis
 
 import com.algoreport.config.exception.CustomException
 import com.algoreport.config.exception.Error
+import com.algoreport.config.properties.AlgoreportProperties
 import com.algoreport.module.studygroup.StudyGroupRepository
 import com.algoreport.module.user.UserRepository
 import java.time.LocalDateTime
@@ -30,7 +31,8 @@ class StudyGroupDashboardService(
     private val studyGroupRepository: StudyGroupRepository,
     private val userRepository: UserRepository,
     private val analysisCacheService: AnalysisCacheService,
-    private val elasticsearchService: ElasticsearchService
+    private val elasticsearchService: ElasticsearchService,
+    private val algoreportProperties: AlgoreportProperties
 ) {
     
     companion object {
@@ -366,14 +368,14 @@ class StudyGroupDashboardService(
         val groupTagSkills = calculateGroupTagSkills(memberAnalysisData, allTags)
         
         val strongTags = groupTagSkills
-            .filter { it.value >= STRONG_TAG_THRESHOLD }
+            .filter { it.value >= algoreportProperties.analysis.strongTagThreshold }
             .toList()
             .sortedByDescending { it.second }
             .take(MAX_TAG_COUNT)
             .map { it.first }
             
         val weakTags = groupTagSkills
-            .filter { it.value < WEAK_TAG_THRESHOLD }
+            .filter { it.value < algoreportProperties.analysis.weakTagThreshold }
             .toList()
             .sortedBy { it.second }
             .take(MAX_TAG_COUNT)

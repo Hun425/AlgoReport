@@ -19,7 +19,11 @@ class SolvedacApiClientTest : BehaviorSpec({
     
     given("SolvedacApiClient Mock 테스트") {
         val restTemplate = mockk<RestTemplate>()
-        val solvedacApiClient = SolvedacApiClientImpl(restTemplate)
+        val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+        val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+        every { algoreportProperties.external } returns externalProperties
+        every { externalProperties.solvedacApiBaseUrl } returns "https://solved.ac/api/v3"
+        val solvedacApiClient = SolvedacApiClientImpl(restTemplate, algoreportProperties)
         
         `when`("getUserInfo에서 유효한 핸들을 조회할 때") {
             val handle = "testuser"
@@ -249,7 +253,11 @@ class SolvedacApiClientTest : BehaviorSpec({
     
     given("SolvedacApiClient") {
         val restTemplate = mockk<RestTemplate>()
-        val solvedacApiClient = SolvedacApiClientImpl(restTemplate)
+        val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+        val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+        every { algoreportProperties.external } returns externalProperties
+        every { externalProperties.solvedacApiBaseUrl } returns "https://solved.ac/api/v3"
+        val solvedacApiClient = SolvedacApiClientImpl(restTemplate, algoreportProperties)
         
         `when`("사용자 정보를 조회할 때") {
             val handle = "testuser"

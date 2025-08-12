@@ -86,7 +86,14 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                         "memberCount" to 3
                     )
                     
-                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { analysisProperties.highSkillThreshold } returns 0.7
+                    
+                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = StudyGroupDashboardRequest("group-123")
                     val result = dashboardService.getStudyGroupDashboard(request)
                     
@@ -144,7 +151,14 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                     )
                     every { analysisCacheService.getGroupDashboardFromCache("group-456") } returns cachedDashboard
                     
-                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { analysisProperties.highSkillThreshold } returns 0.7
+                    
+                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = StudyGroupDashboardRequest("group-456")
                     val result = dashboardService.getStudyGroupDashboard(request)
                     
@@ -182,7 +196,14 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                         "memberCount" to 1
                     )
                     
-                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { analysisProperties.highSkillThreshold } returns 0.7
+                    
+                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = StudyGroupDashboardRequest("group-789", forceRefresh = true)
                     val result = dashboardService.getStudyGroupDashboard(request)
                     
@@ -201,7 +222,14 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                     
                     every { studyGroupRepository.existsById("nonexistent-group") } returns false
                     
-                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { analysisProperties.highSkillThreshold } returns 0.7
+                    
+                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = StudyGroupDashboardRequest("nonexistent-group")
                     
                     val exception = try {
@@ -233,7 +261,14 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                         "memberCount" to 0
                     )
                     
-                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { analysisProperties.highSkillThreshold } returns 0.7
+                    
+                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = StudyGroupDashboardRequest("empty-group")
                     val result = dashboardService.getStudyGroupDashboard(request)
                     
@@ -269,7 +304,14 @@ class StudyGroupDashboardServiceTest : BehaviorSpec() {
                         "memberCount" to 2
                     )
                     
-                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { analysisProperties.highSkillThreshold } returns 0.7
+                    
+                    val dashboardService = StudyGroupDashboardService(studyGroupRepository, userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = StudyGroupDashboardRequest("new-group")
                     val result = dashboardService.getStudyGroupDashboard(request)
                     

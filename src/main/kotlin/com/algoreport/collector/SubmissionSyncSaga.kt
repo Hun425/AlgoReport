@@ -19,7 +19,7 @@ class SubmissionSyncSaga(
     private val submissionSyncService: SubmissionSyncService,
     private val outboxService: OutboxService,
     private val submissionRepository: SubmissionRepository,
-    @Qualifier("schedulingCoroutineScope") private val coroutineScope: CoroutineScope
+    @param:Qualifier("schedulingCoroutineScope") private val coroutineScope: CoroutineScope
 ) {
     
     /**

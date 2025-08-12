@@ -38,7 +38,8 @@ class SubmissionSyncSagaTest : BehaviorSpec({
             solvedacApiClient = solvedacApiClient,
             submissionSyncService = submissionSyncService,
             outboxService = outboxService,
-            submissionRepository = submissionRepository
+            submissionRepository = submissionRepository,
+            coroutineScope = mockk()
         )
         
         // 공통 Mock 설정

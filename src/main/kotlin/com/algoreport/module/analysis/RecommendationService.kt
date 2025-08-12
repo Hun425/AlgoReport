@@ -2,6 +2,7 @@ package com.algoreport.module.analysis
 
 import com.algoreport.config.exception.CustomException
 import com.algoreport.config.exception.Error
+import com.algoreport.config.properties.AlgoreportProperties
 import com.algoreport.module.user.UserRepository
 import java.time.LocalDateTime
 
@@ -21,7 +22,8 @@ import java.time.LocalDateTime
 class RecommendationService(
     private val userRepository: UserRepository,
     private val analysisCacheService: AnalysisCacheService,
-    private val elasticsearchService: ElasticsearchService
+    private val elasticsearchService: ElasticsearchService,
+    private val algoreportProperties: AlgoreportProperties
 ) {
     
     companion object {
@@ -108,7 +110,7 @@ class RecommendationService(
                 recommendationReason = "초보자에게 적합한 기본 문제입니다.",
                 weakTag = "implementation",
                 estimatedDifficulty = problem.tier,
-                url = "https://www.acmicpc.net/problem/${problem.problemId}"
+                url = "${algoreportProperties.external.baekjoonProblemBaseUrl}${problem.problemId}"
             )
         }
         
@@ -254,7 +256,7 @@ class RecommendationService(
                 recommendationReason = customReason,
                 weakTag = primaryWeakTag,
                 estimatedDifficulty = problem.tier,
-                url = "https://www.acmicpc.net/problem/${problem.problemId}"
+                url = "${algoreportProperties.external.baekjoonProblemBaseUrl}${problem.problemId}"
             )
         }
     }

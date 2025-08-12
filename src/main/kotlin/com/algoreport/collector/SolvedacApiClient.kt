@@ -3,6 +3,7 @@ package com.algoreport.collector
 import com.algoreport.collector.dto.*
 import com.algoreport.config.exception.CustomException
 import com.algoreport.config.exception.Error
+import com.algoreport.config.properties.AlgoreportProperties
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClientException
@@ -48,7 +49,8 @@ interface SolvedacApiClient {
  */
 @Component
 class SolvedacApiClientImpl(
-    private val restTemplate: RestTemplate
+    private val restTemplate: RestTemplate,
+    private val algoreportProperties: AlgoreportProperties
 ) : SolvedacApiClient {
     
     private val logger = LoggerFactory.getLogger(SolvedacApiClientImpl::class.java)
@@ -61,7 +63,7 @@ class SolvedacApiClientImpl(
         validateHandle(handle)
         
         return try {
-            val url = "$SOLVEDAC_API_BASE_URL/user/show?handle=$handle"
+            val url = "${algoreportProperties.external.solvedacApiBaseUrl}/user/show?handle=$handle"
             logger.debug("Fetching user info for handle: {}", handle)
             
             val result = restTemplate.getForObject(url, UserInfo::class.java)
@@ -80,7 +82,7 @@ class SolvedacApiClientImpl(
         validatePage(page)
         
         return try {
-            val url = "$SOLVEDAC_API_BASE_URL/search/submission?query=user:$handle&page=$page"
+            val url = "${algoreportProperties.external.solvedacApiBaseUrl}/search/submission?query=user:$handle&page=$page"
             logger.debug("Fetching submissions for handle: {}, page: {}", handle, page)
             
             val result = restTemplate.getForObject(url, SubmissionList::class.java)
@@ -99,7 +101,7 @@ class SolvedacApiClientImpl(
         validateProblemId(problemId)
         
         return try {
-            val url = "$SOLVEDAC_API_BASE_URL/problem/show?problemId=$problemId"
+            val url = "${algoreportProperties.external.solvedacApiBaseUrl}/problem/show?problemId=$problemId"
             logger.debug("Fetching problem info for problemId: {}", problemId)
             
             val result = restTemplate.getForObject(url, ProblemInfo::class.java)

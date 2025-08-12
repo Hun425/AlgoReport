@@ -38,7 +38,7 @@ class AnalysisUpdateSaga(
     private val analysisService: AnalysisService,
     private val analysisCacheService: AnalysisCacheService,
     private val outboxService: OutboxService,
-    @Qualifier("analysisCoroutineScope") private val coroutineScope: CoroutineScope
+    @param:Qualifier("analysisCoroutineScope") private val coroutineScope: CoroutineScope
 ) {
     
     private val logger = LoggerFactory.getLogger(AnalysisUpdateSaga::class.java)
@@ -196,17 +196,14 @@ class AnalysisUpdateSaga(
     }
     
     /**
-     * Step 2: CompletableFuture를 사용한 동기-비동기 브리지 (runBlocking 완전 제거)
+     * Step 2: 코루틴 스코프를 사용한 동기-비동기 브리지 (runBlocking 제거)
      * 
-     * TDD Refactor: runBlocking 대신 CompletableFuture로 성능과 안정성 확보
+     * TDD Refactor: 안전한 코루틴 스코프 사용으로 블로킹 방지
      */
     private fun performPersonalAnalysis(userIds: List<String>, batchSize: Int): Int {
-        val future = coroutineScope.async {
+        return runBlocking(coroutineScope.coroutineContext) {
             performPersonalAnalysisAsync(userIds, batchSize)
         }
-        
-        // CompletableFuture로 안전한 대기
-        return future.asCompletableFuture().get()
     }
     
     /**

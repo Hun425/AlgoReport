@@ -66,7 +66,17 @@ class RecommendationServiceTest : BehaviorSpec() {
                     every { elasticsearchService.searchProblemsByTags(listOf("dp", "graph"), any(), any()) } returns mockProblems
                     every { elasticsearchService.getUserSolvedProblems("test-user-123") } returns setOf("999", "998") // 이미 푼 문제들
                     
-                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { algoreportProperties.external } returns externalProperties
+                    every { analysisProperties.maxRecommendations } returns 5
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { externalProperties.baekjoonProblemBaseUrl } returns "https://www.acmicpc.net/problem/"
+                    
+                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = RecommendationRequest("test-user-123", maxRecommendations = 5)
                     val result = recommendationService.getPersonalizedRecommendations(request)
                     
@@ -109,7 +119,17 @@ class RecommendationServiceTest : BehaviorSpec() {
                     every { elasticsearchService.searchProblemsByTags(listOf("implementation", "math"), any(), any()) } returns mockProblems
                     every { elasticsearchService.getUserSolvedProblems("test-user-456") } returns emptySet()
                     
-                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { algoreportProperties.external } returns externalProperties
+                    every { analysisProperties.maxRecommendations } returns 5
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { externalProperties.baekjoonProblemBaseUrl } returns "https://www.acmicpc.net/problem/"
+                    
+                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = RecommendationRequest("test-user-456")
                     val result = recommendationService.getPersonalizedRecommendations(request)
                     
@@ -152,7 +172,17 @@ class RecommendationServiceTest : BehaviorSpec() {
                     every { elasticsearchService.searchProblemsByTags(listOf("string", "geometry"), any(), any()) } returns mockProblems
                     every { elasticsearchService.getUserSolvedProblems("test-user-789") } returns emptySet()
                     
-                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { algoreportProperties.external } returns externalProperties
+                    every { analysisProperties.maxRecommendations } returns 5
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { externalProperties.baekjoonProblemBaseUrl } returns "https://www.acmicpc.net/problem/"
+                    
+                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = RecommendationRequest("test-user-789")
                     val result = recommendationService.getPersonalizedRecommendations(request)
                     
@@ -173,7 +203,17 @@ class RecommendationServiceTest : BehaviorSpec() {
                     
                     every { userRepository.findAllActiveUserIds() } returns emptyList()
                     
-                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { algoreportProperties.external } returns externalProperties
+                    every { analysisProperties.maxRecommendations } returns 5
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { externalProperties.baekjoonProblemBaseUrl } returns "https://www.acmicpc.net/problem/"
+                    
+                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = RecommendationRequest("nonexistent-user")
                     
                     val exception = try {
@@ -207,7 +247,17 @@ class RecommendationServiceTest : BehaviorSpec() {
                     every { elasticsearchService.getBeginnerRecommendations(5) } returns beginnerProblems
                     every { analysisCacheService.cacheRecommendation("new-user-999", any(), any()) } returns Unit
                     
-                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { algoreportProperties.external } returns externalProperties
+                    every { analysisProperties.maxRecommendations } returns 5
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { externalProperties.baekjoonProblemBaseUrl } returns "https://www.acmicpc.net/problem/"
+                    
+                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = RecommendationRequest("new-user-999")
                     val result = recommendationService.getPersonalizedRecommendations(request)
                     
@@ -254,7 +304,17 @@ class RecommendationServiceTest : BehaviorSpec() {
                     every { elasticsearchService.searchProblemsByTags(listOf("advanced_data_structures", "number_theory"), any(), any()) } returns hardProblems
                     every { elasticsearchService.getUserSolvedProblems("expert-user-777") } returns (1..1000).map { it.toString() }.toSet()
                     
-                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService)
+                    val analysisProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.AnalysisProperties>()
+                    val externalProperties = mockk<com.algoreport.config.properties.AlgoreportProperties.ExternalProperties>()
+                    val algoreportProperties = mockk<com.algoreport.config.properties.AlgoreportProperties>()
+                    every { algoreportProperties.analysis } returns analysisProperties
+                    every { algoreportProperties.external } returns externalProperties
+                    every { analysisProperties.maxRecommendations } returns 5
+                    every { analysisProperties.strongTagThreshold } returns 0.7
+                    every { analysisProperties.weakTagThreshold } returns 0.5
+                    every { externalProperties.baekjoonProblemBaseUrl } returns "https://www.acmicpc.net/problem/"
+                    
+                    val recommendationService = RecommendationService(userRepository, analysisCacheService, elasticsearchService, algoreportProperties)
                     val request = RecommendationRequest("expert-user-777")
                     val result = recommendationService.getPersonalizedRecommendations(request)
                     
