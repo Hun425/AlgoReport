@@ -2,6 +2,7 @@ package com.algoreport.collector
 
 import com.algoreport.config.outbox.OutboxService
 import kotlinx.coroutines.*
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
@@ -17,19 +18,21 @@ class SubmissionSyncSaga(
     private val solvedacApiClient: SolvedacApiClient,
     private val submissionSyncService: SubmissionSyncService,
     private val outboxService: OutboxService,
-    private val submissionRepository: SubmissionRepository
+    private val submissionRepository: SubmissionRepository,
+    @Qualifier("schedulingCoroutineScope") private val coroutineScope: CoroutineScope
 ) {
     
     /**
      * 스케줄링된 제출 동기화 실행
      * 
-     * TDD Green 단계: 테스트 통과를 위한 최소한의 구현
-     * InitialDataSyncSaga 패턴을 참고하여 Kotlin Coroutines 사용
+     * TDD Refactor 단계: runBlocking 제거 및 안전한 코루틴 스코프 사용
+     * - 스케줄링 전용 코루틴 스코프를 사용하여 블로킹 방지
+     * - fire-and-forget 방식으로 비동기 실행
      */
     @Scheduled(fixedRate = 300000) // 5분마다 실행
     fun scheduledSubmissionSync() {
-        // 기존 InitialDataSyncSaga 패턴을 따라 suspend 함수 호출
-        kotlinx.coroutines.runBlocking {
+        // 안전한 코루틴 스코프 사용 (runBlocking 대신)
+        coroutineScope.launch {
             try {
                 val result = executeSync()
                 if (result.successful) {

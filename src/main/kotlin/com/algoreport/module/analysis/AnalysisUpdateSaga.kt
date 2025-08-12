@@ -8,6 +8,7 @@ import com.algoreport.module.user.SagaStatus
 import com.algoreport.module.studygroup.StudyGroupRepository
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
@@ -36,7 +37,8 @@ class AnalysisUpdateSaga(
     private val studyGroupRepository: StudyGroupRepository,
     private val analysisService: AnalysisService,
     private val analysisCacheService: AnalysisCacheService,
-    private val outboxService: OutboxService
+    private val outboxService: OutboxService,
+    @Qualifier("analysisCoroutineScope") private val coroutineScope: CoroutineScope
 ) {
     
     private val logger = LoggerFactory.getLogger(AnalysisUpdateSaga::class.java)
@@ -194,12 +196,17 @@ class AnalysisUpdateSaga(
     }
     
     /**
-     * Step 2 호출을 위한 동기 래퍼
+     * Step 2: CompletableFuture를 사용한 동기-비동기 브리지 (runBlocking 완전 제거)
+     * 
+     * TDD Refactor: runBlocking 대신 CompletableFuture로 성능과 안정성 확보
      */
     private fun performPersonalAnalysis(userIds: List<String>, batchSize: Int): Int {
-        return runBlocking {
+        val future = coroutineScope.async {
             performPersonalAnalysisAsync(userIds, batchSize)
         }
+        
+        // CompletableFuture로 안전한 대기
+        return future.asCompletableFuture().get()
     }
     
     /**
