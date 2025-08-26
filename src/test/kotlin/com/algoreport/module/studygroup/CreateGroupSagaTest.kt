@@ -11,6 +11,7 @@ import io.kotest.extensions.spring.SpringExtension
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 /**
  * CREATE_GROUP_SAGA 테스트
@@ -131,7 +132,7 @@ class CreateGroupSagaTest(
             
             `when`("존재하지 않는 사용자가 그룹 생성을 시도하면") {
                 then("Saga가 실패하고 그룹이 생성되지 않아야 한다") {
-                    val nonExistentUserId = "non-existent-user-id"
+                    val nonExistentUserId = UUID.randomUUID()  // 존재하지 않는 UUID
                     
                     val request = CreateGroupRequest(
                         ownerId = nonExistentUserId,

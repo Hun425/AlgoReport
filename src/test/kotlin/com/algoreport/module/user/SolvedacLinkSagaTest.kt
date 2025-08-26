@@ -44,7 +44,7 @@ class SolvedacLinkSagaTest(
         given("SOLVEDAC_LINK_SAGA가 실행될 때") {
             val solvedacHandle = "test_handle"
             val validUserEmail = "test@example.com"
-            lateinit var userId: String  // 실제 생성된 사용자 ID를 저장
+            lateinit var userId: UUID  // 실제 생성된 사용자 ID를 저장
             
             // 각 테스트 전에 상태 초기화 및 사용자 생성
             beforeEach {
@@ -169,7 +169,7 @@ class SolvedacLinkSagaTest(
                     // 현재는 기본 실패 시나리오만 테스트
                     
                     val request = SolvedacLinkRequest(
-                        userId = "non_existent_user",
+                        userId = UUID.randomUUID(),  // 존재하지 않는 UUID
                         solvedacHandle = solvedacHandle
                     )
                     
@@ -194,10 +194,11 @@ class SolvedacLinkSagaTest(
             
             `when`("사용자가 존재하지 않을 때") {
                 then("USER_NOT_FOUND 에러가 발생해야 한다") {
-                    every { mockUserService.findById("nonexistent") } returns null
+                    val nonexistentUserId = UUID.randomUUID()
+                    every { mockUserService.findById(nonexistentUserId) } throws CustomException(Error.USER_NOT_FOUND)
                     
                     val request = SolvedacLinkRequest(
-                        userId = "nonexistent",
+                        userId = nonexistentUserId,
                         solvedacHandle = "testhandle"
                     )
                     
@@ -206,25 +207,26 @@ class SolvedacLinkSagaTest(
                     result.sagaStatus shouldBe SagaStatus.FAILED
                     result.errorMessage shouldBe Error.USER_NOT_FOUND.message
                     
-                    verify(exactly = 1) { mockUserService.findById("nonexistent") }
+                    verify(exactly = 1) { mockUserService.findById(nonexistentUserId) }
                     verify(exactly = 0) { mockSolvedacApiClient.getUserInfo(any()) }
                 }
             }
             
             `when`("핸들이 이미 다른 사용자에 의해 연동되었을 때") {
                 then("ALREADY_LINKED_SOLVEDAC_HANDLE 에러가 발생해야 한다") {
+                    val user1Id = UUID.randomUUID()
                     val testUser = User(
-                        id = "user1",
+                        id = user1Id,
                         email = "test@example.com",
                         nickname = "테스트사용자",
                         provider = AuthProvider.GOOGLE
                     )
                     
-                    every { mockUserService.findById("user1") } returns testUser
+                    every { mockUserService.findById(user1Id) } returns testUser
                     every { mockUserService.existsBySolvedacHandle("duplicatehandle") } returns true
                     
                     val request = SolvedacLinkRequest(
-                        userId = "user1",
+                        userId = user1Id,
                         solvedacHandle = "duplicatehandle"
                     )
                     
@@ -233,7 +235,7 @@ class SolvedacLinkSagaTest(
                     result.sagaStatus shouldBe SagaStatus.FAILED
                     result.errorMessage shouldBe Error.ALREADY_LINKED_SOLVEDAC_HANDLE.message
                     
-                    verify(exactly = 1) { mockUserService.findById("user1") }
+                    verify(exactly = 1) { mockUserService.findById(user1Id) }
                     verify(exactly = 1) { mockUserService.existsBySolvedacHandle("duplicatehandle") }
                     verify(exactly = 0) { mockSolvedacApiClient.getUserInfo(any()) }
                 }
@@ -241,19 +243,20 @@ class SolvedacLinkSagaTest(
             
             `when`("solved.ac API에서 사용자를 찾을 수 없을 때") {
                 then("SOLVEDAC_USER_NOT_FOUND 에러가 발생해야 한다") {
+                    val user1Id = UUID.randomUUID()
                     val testUser = User(
-                        id = "user1",
+                        id = user1Id,
                         email = "test@example.com",
                         nickname = "테스트사용자",
                         provider = AuthProvider.GOOGLE
                     )
                     
-                    every { mockUserService.findById("user1") } returns testUser
+                    every { mockUserService.findById(user1Id) } returns testUser
                     every { mockUserService.existsBySolvedacHandle("invalidhandle") } returns false
                     every { mockSolvedacApiClient.getUserInfo("invalidhandle") } throws CustomException(Error.SOLVEDAC_USER_NOT_FOUND)
                     
                     val request = SolvedacLinkRequest(
-                        userId = "user1",
+                        userId = user1Id,
                         solvedacHandle = "invalidhandle"
                     )
                     
@@ -269,8 +272,9 @@ class SolvedacLinkSagaTest(
             
             `when`("사용자 프로필 업데이트가 실패할 때") {
                 then("보상 트랜잭션이 실행되어야 한다") {
+                    val user1Id = UUID.randomUUID()
                     val originalUser = User(
-                        id = "user1",
+                        id = user1Id,
                         email = "test@example.com",
                         nickname = "테스트사용자",
                         provider = AuthProvider.GOOGLE,
@@ -285,14 +289,14 @@ class SolvedacLinkSagaTest(
                         solvedCount = 200
                     )
                     
-                    every { mockUserService.findById("user1") } returns originalUser
+                    every { mockUserService.findById(user1Id) } returns originalUser
                     every { mockUserService.existsBySolvedacHandle("newhandle") } returns false
                     every { mockSolvedacApiClient.getUserInfo("newhandle") } returns userInfo
-                    every { mockUserService.updateSolvedacInfo("user1", "newhandle", 20, 200) } returns null
-                    every { mockUserService.updateSolvedacInfo("user1", "originalhandle", 15, 100) } returns originalUser
+                    every { mockUserService.updateSolvedacInfo(user1Id, "newhandle", 20, 200) } returns null
+                    every { mockUserService.updateSolvedacInfo(user1Id, "originalhandle", 15, 100) } returns originalUser
                     
                     val request = SolvedacLinkRequest(
-                        userId = "user1",
+                        userId = user1Id,
                         solvedacHandle = "newhandle"
                     )
                     
@@ -302,7 +306,7 @@ class SolvedacLinkSagaTest(
                     result.errorMessage shouldBe Error.USER_UPDATE_FAILED.message
                     
                     // 보상 트랜잭션 확인: 원본 정보로 롤백 시도
-                    verify(exactly = 1) { mockUserService.updateSolvedacInfo("user1", "originalhandle", 15, 100) }
+                    verify(exactly = 1) { mockUserService.updateSolvedacInfo(user1Id, "originalhandle", 15, 100) }
                 }
             }
             
