@@ -377,6 +377,48 @@ given("분석 프로필 생성이 실패할 때") {
 
 ---
 
-📅 **최종 업데이트**: 2024-08-26 Phase 1 완료  
+## 🚨 **Phase 1 후속 작업: UUID/String 타입 통일 (2024-08-26 오후)**
+
+### **🔍 발견된 추가 문제**
+Phase 1 JPA 전환 후 **컴파일 단계에서 대량의 UUID/String 타입 불일치** 발생:
+- 메인 코드: User, StudyGroup 등의 ID가 UUID로 변경됨
+- 테스트 코드: 여전히 String 기반으로 Mock 데이터 생성
+- 일부 서비스: 혼재된 타입 정의 (AnalysisService 등)
+
+### **✅ 해결 완료된 타입 불일치**
+1. **SolvedacLinkSaga + Test**: 모든 userId String → UUID 변경
+2. **CreateGroupSaga + Test**: ownerId String → UUID 변경  
+3. **JoinGroupSaga + Test**: userId String → UUID 변경
+4. **StudyGroupService**: 모든 멤버 관리 메서드 UUID 기반으로 통일
+5. **CustomOAuth2UserServiceTest**: UserRegistrationResult.userId 타입 맞춤
+6. **Error enum**: 누락된 오류 코드 추가 (DUPLICATE_EMAIL, INVALID_OAUTH_CODE 등)
+
+### **⚠️ 임시방편으로 처리된 부분**
+- `AnalysisUpdateSagaTest.kt`: `user.id.toString()` 변환으로 임시 해결
+- 이유: AnalysisService가 여전히 String 기반 인메모리 구현
+
+### **🎯 올바른 방향성 합의**
+**사용자 지적사항**: 
+> "임시방편으로 `.toString()` 붙이는 것보다는 AnalysisService 자체를 UUID 기반으로 변경하는게 올바른 접근"
+
+**합의된 방향성**:
+1. ✅ **근본적 해결**: 서비스 계층을 UUID 기반으로 통일
+2. ❌ **임시방편 금지**: `.toString()` 변환은 기술부채 증가
+3. 🎯 **일관성 원칙**: 전체 시스템의 ID 타입 통일성 우선
+
+### **🚀 다음 작업 계획**
+1. **AnalysisService** UUID 기반으로 완전 변경
+2. **PersonalStatsRefreshSagaTest** 등 남은 테스트 파일들 UUID 통일  
+3. **Analysis 모듈 전체** 타입 일관성 확보
+
+### **📊 현재 상태**
+- ✅ 핵심 SAGA 클래스들: UUID 기반 완료
+- ✅ StudyGroup 관련: 완전히 통일됨  
+- ⏳ Analysis 모듈: 부분적 임시처리 상태
+- ⏳ 테스트 컴파일: 약 80% 해결
+
+---
+
+📅 **최종 업데이트**: 2024-08-26 UUID 타입 통일 진행중  
 👤 **작성자**: 개발팀  
-🔄 **다음 업데이트 예정**: Phase 2 시작 시
+🔄 **다음 업데이트 예정**: AnalysisService UUID 기반 변경 완료 시
