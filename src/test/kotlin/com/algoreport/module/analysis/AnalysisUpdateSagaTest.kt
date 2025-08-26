@@ -78,8 +78,8 @@ class AnalysisUpdateSagaTest(
                     result.errorMessage shouldBe null
                     
                     // 분석 결과 검증
-                    analysisService.hasPersonalAnalysis(user1.id) shouldBe true
-                    analysisService.hasPersonalAnalysis(user2.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(user1.id.toString()) shouldBe true
+                    analysisService.hasPersonalAnalysis(user2.id.toString()) shouldBe true
                     analysisService.hasGroupAnalysis(group.id) shouldBe true
                 }
             }
@@ -126,7 +126,7 @@ class AnalysisUpdateSagaTest(
                     result.compensationExecuted shouldBe true
                     
                     // 보상 트랜잭션으로 상태가 롤백되었는지 확인
-                    analysisService.hasPersonalAnalysis(user.id) shouldBe false
+                    analysisService.hasPersonalAnalysis(user.id.toString()) shouldBe false
                 }
             }
             
@@ -180,7 +180,7 @@ class AnalysisUpdateSagaTest(
                     
                     // 모든 사용자의 개인 분석이 완료되었는지 확인
                     users.forEach { user ->
-                        analysisService.hasPersonalAnalysis(user.id) shouldBe true
+                        analysisService.hasPersonalAnalysis(user.id.toString()) shouldBe true
                     }
                 }
             }

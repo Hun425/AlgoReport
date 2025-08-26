@@ -2,6 +2,7 @@ package com.algoreport.module.analysis
 
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
+import java.util.UUID
 
 /**
  * 분석 서비스
