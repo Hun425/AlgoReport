@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 import org.springframework.security.oauth2.core.user.OAuth2User
+import java.util.UUID
 
 /**
  * CustomOAuth2UserService 테스트
@@ -31,7 +32,7 @@ class CustomOAuth2UserServiceTest : BehaviorSpec({
             val email = "test@example.com"
             val name = "Test User"
             val picture = "https://example.com/profile.jpg"
-            val userId = "generated_user_id_123"
+            val userId = UUID.randomUUID()
             
             val mockUserRequest = createMockOAuth2UserRequest()
             val mockOAuth2User = createMockOAuth2User(
@@ -281,7 +282,7 @@ class CustomOAuth2UserServiceTest : BehaviorSpec({
                 val email = "user.with.picture@example.com"
                 val name = "Picture User"
                 val picture = "https://lh3.googleusercontent.com/a/profile.jpg"
-                val userId = "user_with_picture_id"
+                val userId = UUID.randomUUID()
                 
                 val mockUserRequest = createMockOAuth2UserRequest()
                 val mockOAuth2User = createMockOAuth2User(
@@ -339,7 +340,7 @@ class CustomOAuth2UserServiceTest : BehaviorSpec({
                 
                 val sagaResult = UserRegistrationResult(
                     sagaStatus = SagaStatus.COMPLETED,
-                    userId = "special_email_user_id",
+                    userId = UUID.randomUUID(),
                     errorMessage = null
                 )
                 
