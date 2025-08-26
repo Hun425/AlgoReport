@@ -1,27 +1,40 @@
 package com.algoreport.module.user
 
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
+import java.util.UUID
+
 /**
- * 사용자 데이터 접근 인터페이스
- * Repository 패턴으로 데이터 접근 로직 분리
+ * 사용자 데이터 접근을 위한 Spring Data JPA 리포지토리
  */
-interface UserRepository {
+@Repository
+interface UserRepository : JpaRepository<User, UUID> {
+
     /**
-     * 모든 활성 사용자 ID 조회
+     * 이메일로 사용자를 조회합니다.
      */
-    fun findAllActiveUserIds(): List<String>
-    
+    fun findByEmail(email: String): User?
+
     /**
-     * 사용자 존재 여부 확인
+     * 해당 이메일의 사용자가 존재하는지 확인합니다.
      */
-    fun existsById(userId: String): Boolean
-    
+    fun existsByEmail(email: String): Boolean
+
     /**
-     * 사용자 조회
+     * 해당 solved.ac 핸들의 사용자가 존재하는지 확인합니다.
      */
-    fun findById(userId: String): User?
-    
+    fun existsBySolvedacHandle(solvedacHandle: String): Boolean
+
     /**
-     * 총 사용자 수 조회
+     * solved.ac 핸들이 설정된 모든 사용자를 조회합니다.
      */
-    fun count(): Long
+    fun findAllBySolvedacHandleIsNotNull(): List<User>
+
+    // JpaRepository가 기본으로 제공하는 메소드들:
+    // - save(user: User): User
+    // - findById(id: UUID): Optional<User>
+    // - existsById(id: UUID): Boolean
+    // - count(): Long
+    // - delete(user: User)
+    // - findAll(): List<User>
 }

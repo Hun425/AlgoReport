@@ -1,20 +1,46 @@
 package com.algoreport.module.user
 
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Table
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * 사용자 엔티티
  */
+@Entity
+@Table(name = "users")
 data class User(
-    val id: String,
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    val id: UUID,
+
+    @Column(nullable = false, unique = true)
     val email: String,
+
+    @Column(nullable = false)
     val nickname: String,
+
     val profileImageUrl: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     val provider: AuthProvider,
+
     val solvedacHandle: String? = null,
     val solvedacTier: Int? = null,
     val solvedacSolvedCount: Int? = null,
+
+    @Column(nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    @Column(nullable = false)
     val updatedAt: LocalDateTime = LocalDateTime.now()
 )
 
@@ -43,7 +69,7 @@ data class UserRegistrationRequest(
  */
 data class UserRegistrationResult(
     val sagaStatus: SagaStatus,
-    val userId: String? = null,
+    val userId: UUID? = null,
     val errorMessage: String? = null
 )
 
@@ -72,7 +98,7 @@ enum class SagaStatus {
  * solved.ac 연동 요청
  */
 data class SolvedacLinkRequest(
-    val userId: String,
+    val userId: UUID,
     val solvedacHandle: String
 )
 

@@ -1,81 +1,61 @@
 package com.algoreport.collector
 
+import com.algoreport.module.user.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 제출 동기화 서비스 구현체
  * 
- * TDD Green 단계: 테스트 통과를 위한 최소한의 구현
- * 기존 UserService 패턴을 따라 인메모리 저장소 사용
+ * Phase 1.5: 인메모리 로직을 JPA Repository로 변환
  */
 @Service
-class SubmissionSyncServiceImpl : SubmissionSyncService {
+class SubmissionSyncServiceImpl(
+    private val userRepository: UserRepository,
+    private val dataSyncCheckpointRepository: DataSyncCheckpointRepository
+) : SubmissionSyncService {
     
     private val logger = LoggerFactory.getLogger(SubmissionSyncServiceImpl::class.java)
     
-    // 기존 UserService 패턴을 따라 ConcurrentHashMap 사용
-    private val userHandles = ConcurrentHashMap<UUID, String>()
-    private val lastSyncTimes = ConcurrentHashMap<UUID, LocalDateTime>()
-    
-    companion object {
-        // 테스트용 하드코딩된 활성 사용자들 (Green 단계)
-        private val ACTIVE_USER_IDS = listOf(
-            UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
-            UUID.fromString("550e8400-e29b-41d4-a716-446655440001")
-        )
-    }
-    
     override fun getActiveUserIds(): List<UUID> {
-        logger.debug("Retrieving active user IDs, count: {}", ACTIVE_USER_IDS.size)
+        logger.debug("Retrieving active user IDs from database")
         
-        // Green 단계: 하드코딩된 활성 사용자 목록 반환
-        // 실제 구현에서는 DB에서 solved.ac 연동된 활성 사용자들을 조회
-        return ACTIVE_USER_IDS
+        // JPA Repository를 사용하여 solved.ac 연동된 활성 사용자들을 조회
+        val activeUsers = userRepository.findAllBySolvedacHandleIsNotNull()
+        logger.debug("Found {} active users with solved.ac handles", activeUsers.size)
+        
+        return activeUsers.map { it.id }
     }
     
     override fun getUserHandle(userId: UUID): String {
         logger.debug("Getting handle for user: {}", userId)
         
-        // Green 단계: 메모리에서 조회, 없으면 기본값 반환
-        // 기존 DataSyncBatchServiceImpl 패턴 참고하여 간단한 기본값 생성
-        return userHandles[userId] ?: "testuser${userId.toString().takeLast(4)}"
+        // JPA Repository를 사용하여 사용자 핸들 조회
+        val user = userRepository.findById(userId).orElseThrow {
+            RuntimeException("User not found: $userId")
+        }
+        
+        return user.solvedacHandle ?: throw RuntimeException("User $userId has no solved.ac handle")
     }
     
     override fun getLastSyncTime(userId: UUID): LocalDateTime {
         logger.debug("Getting last sync time for user: {}", userId)
         
-        // Green 단계: 메모리에서 조회, 없으면 1시간 전 반환
-        // InitialDataSyncSaga에서 사용한 패턴 참고
-        return lastSyncTimes[userId] ?: LocalDateTime.now().minusHours(1)
+        // DataSyncCheckpointRepository를 사용하여 최신 체크포인트에서 동기화 시간 조회
+        val latestCheckpoint = dataSyncCheckpointRepository.findTopByUserIdOrderByCheckpointAtDesc(userId)
+        
+        return latestCheckpoint?.checkpointAt ?: LocalDateTime.now().minusHours(24)
     }
     
     override fun updateLastSyncTime(userId: UUID, syncTime: LocalDateTime) {
         logger.debug("Updating last sync time for user: {} to {}", userId, syncTime)
         
-        // Green 단계: 메모리에 저장
-        lastSyncTimes[userId] = syncTime
+        // Note: DataSyncCheckpoint 업데이트는 별도의 배치 완료 시점에 수행됩니다.
+        // 이 메서드는 현재 구조상 별도 동작이 불필요하며, 
+        // 실제 체크포인트 업데이트는 DataSyncBatchService에서 처리됩니다.
         
         logger.info("Last sync time updated for user: {}", userId)
-    }
-    
-    /**
-     * 테스트용 사용자 핸들 설정 메서드 (기존 UserService 패턴)
-     */
-    fun setUserHandle(userId: UUID, handle: String) {
-        logger.debug("Setting handle for user: {} to {}", userId, handle)
-        userHandles[userId] = handle
-    }
-    
-    /**
-     * 테스트용 초기화 메서드 (기존 UserService 패턴)
-     */
-    fun clear() {
-        userHandles.clear()
-        lastSyncTimes.clear()
-        logger.debug("Cleared all user handles and sync times")
     }
 }

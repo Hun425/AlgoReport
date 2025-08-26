@@ -1,5 +1,9 @@
 package com.algoreport.collector
 
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
 import java.time.LocalDateTime
 import java.util.*
 
@@ -40,18 +44,44 @@ data class ProgressTracker(
 )
 
 /**
- * 체크포인트 데이터 클래스
+ * 체크포인트 JPA Entity
+ * Phase 1.1: 인메모리 DataSyncCheckpoint를 JPA Entity로 변환
  */
+@Entity
+@Table(name = "data_sync_checkpoints")
 data class DataSyncCheckpoint(
+    @Id
     val syncJobId: UUID,
+    
+    @Column(nullable = false)
     val userId: UUID,
+    
+    @Column(nullable = false)
     val currentBatch: Int,
+    
+    @Column(nullable = false)
     val totalBatches: Int,
+    
+    @Column(nullable = false)
     val lastProcessedSubmissionId: Long,
+    
+    @Column(nullable = false)
     val collectedCount: Int,
+    
+    @Column(nullable = false)
     val failedAttempts: Int = 0,
+    
+    @Column(nullable = false)
     val checkpointAt: LocalDateTime,
-    val canResume: Boolean
+    
+    @Column(nullable = false)
+    val canResume: Boolean,
+    
+    @Column(nullable = false, updatable = false)
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    
+    @Column(nullable = false)
+    val updatedAt: LocalDateTime = LocalDateTime.now()
 )
 
 /**

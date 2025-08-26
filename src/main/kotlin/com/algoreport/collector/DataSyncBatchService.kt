@@ -1,5 +1,7 @@
 package com.algoreport.collector
 
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 import java.util.*
 
@@ -140,12 +142,12 @@ interface DataSyncBatchService {
  * 
  * TDD Red 단계: 인터페이스만 정의
  */
-interface DataSyncCheckpointRepository {
-    
-    /**
-     * 체크포인트 저장
-     */
-    fun save(checkpoint: DataSyncCheckpoint): DataSyncCheckpoint
+/**
+ * DataSyncCheckpoint JPA Repository
+ * Phase 1.2: 인메모리 Repository를 JPA Repository로 변환
+ */
+@Repository
+interface DataSyncCheckpointRepository : JpaRepository<DataSyncCheckpoint, UUID> {
     
     /**
      * 동기화 작업 ID로 체크포인트 조회
@@ -153,7 +155,16 @@ interface DataSyncCheckpointRepository {
     fun findBySyncJobId(syncJobId: UUID): DataSyncCheckpoint?
     
     /**
-     * 사용자 ID로 최신 체크포인트 조회
+     * 사용자 ID로 최신 체크포인트 조회 (checkpointAt 기준 내림차순)
      */
-    fun findLatestByUserId(userId: UUID): DataSyncCheckpoint?
+    fun findTopByUserIdOrderByCheckpointAtDesc(userId: UUID): DataSyncCheckpoint?
+    
+        
+    // JpaRepository가 기본 제공하는 메서드들:
+    // - save(checkpoint: DataSyncCheckpoint): DataSyncCheckpoint
+    // - findById(syncJobId: UUID): Optional<DataSyncCheckpoint>
+    // - existsById(syncJobId: UUID): Boolean
+    // - count(): Long
+    // - delete(checkpoint: DataSyncCheckpoint)
+    // - findAll(): List<DataSyncCheckpoint>
 }

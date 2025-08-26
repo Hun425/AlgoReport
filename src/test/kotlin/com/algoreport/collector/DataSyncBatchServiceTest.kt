@@ -236,7 +236,7 @@ class DataSyncBatchServiceTest : BehaviorSpec({
                 canResume = true
             )
             
-            every { checkpointRepository.findLatestByUserId(userId) } returns checkpoint
+            every { checkpointRepository.findTopByUserIdOrderByCheckpointAtDesc(userId) } returns checkpoint
             every { checkpointRepository.findBySyncJobId(checkpoint.syncJobId) } returns checkpoint
             every { checkpointRepository.save(any()) } returnsArgument 0
             
@@ -271,7 +271,7 @@ class DataSyncBatchServiceTest : BehaviorSpec({
                 canResume = true
             )
             
-            every { checkpointRepository.findLatestByUserId(userId) } returns checkpoint
+            every { checkpointRepository.findTopByUserIdOrderByCheckpointAtDesc(userId) } returns checkpoint
             
             then("처음부터 새로 시작되어야 한다") {
                 val recoveryResult = dataSyncBatchService.recoverFailedSync(
@@ -359,7 +359,7 @@ class DataSyncBatchServiceTest : BehaviorSpec({
                 canResume = true
             )
             
-            every { checkpointRepository.findLatestByUserId(userId) } returns checkpoint
+            every { checkpointRepository.findTopByUserIdOrderByCheckpointAtDesc(userId) } returns checkpoint
             
             then("복구가 실패해야 한다") {
                 val recoveryResult = dataSyncBatchService.recoverFailedSync(
@@ -379,7 +379,7 @@ class DataSyncBatchServiceTest : BehaviorSpec({
             val userId = UUID.randomUUID()
             val handle = "testuser"
             
-            every { checkpointRepository.findLatestByUserId(userId) } returns null
+            every { checkpointRepository.findTopByUserIdOrderByCheckpointAtDesc(userId) } returns null
             
             then("복구가 실패해야 한다") {
                 val recoveryResult = dataSyncBatchService.recoverFailedSync(

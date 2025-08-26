@@ -246,7 +246,7 @@ class DataSyncBatchServiceImpl(
         val startTime = System.currentTimeMillis()
         
         // 사용자의 최신 체크포인트 조회
-        val latestCheckpoint = checkpointRepository.findLatestByUserId(userId)
+        val latestCheckpoint = checkpointRepository.findTopByUserIdOrderByCheckpointAtDesc(userId)
         
         if (latestCheckpoint == null) {
             logger.warn("No checkpoint found for user: {}", userId)
