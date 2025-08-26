@@ -120,5 +120,6 @@ class SubmissionSyncServiceTest : BehaviorSpec({
                 // Then
                 lastSyncTime shouldBe checkpointTime
             }
+        }
     }
 })
