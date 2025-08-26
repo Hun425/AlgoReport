@@ -263,12 +263,12 @@ class JoinGroupSaga(
      * @param userId 보상 트랜잭션이 실행된 사용자 ID
      * @param eventType 보상 이벤트 타입 (GROUP_JOIN_COMPENSATED, GROUP_JOIN_COMPENSATION_FAILED)
      */
-    private fun publishCompensationEvent(groupId: String, userId: String, eventType: String) {
+    private fun publishCompensationEvent(groupId: String, userId: UUID, eventType: String) {
         try {
             val eventData = mapOf<String, Any>(
                 "eventType" to eventType,
                 "groupId" to groupId,
-                "userId" to userId,
+                "userId" to userId.toString(),
                 "timestamp" to System.currentTimeMillis(),
                 "compensationReason" to "JOIN_GROUP_SAGA_FAILURE"
             )

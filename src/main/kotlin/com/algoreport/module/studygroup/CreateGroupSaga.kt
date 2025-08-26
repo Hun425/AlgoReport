@@ -94,7 +94,7 @@ class CreateGroupSaga(
     }
     
     private fun addOwnerAsMember(groupId: String, ownerId: UUID) {
-        val updatedGroup = studyGroupService.addMember(groupId, ownerId.toString())
+        val updatedGroup = studyGroupService.addMember(groupId, ownerId)
         if (updatedGroup == null) {
             throw CustomException(Error.GROUP_MEMBER_ADD_FAILED)
         }

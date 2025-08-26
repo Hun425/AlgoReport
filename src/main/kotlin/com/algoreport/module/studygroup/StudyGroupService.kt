@@ -52,12 +52,12 @@ class StudyGroupService : StudyGroupRepository {
         return studyGroups[groupId]
     }
     
-    fun addMember(groupId: String, userId: String): StudyGroup? {
+    fun addMember(groupId: String, userId: UUID): StudyGroup? {
         val group = studyGroups[groupId] ?: return null
         val members = groupMembers[groupId] ?: return null
         
-        // 멤버 추가
-        members.add(userId)
+        // 멤버 추가 (UUID를 String으로 변환)
+        members.add(userId.toString())
         val updatedGroup = group.copy(memberCount = members.size)
         studyGroups[groupId] = updatedGroup
         return updatedGroup
@@ -71,12 +71,12 @@ class StudyGroupService : StudyGroupRepository {
      * @param userId 제거할 사용자 ID
      * @return 업데이트된 그룹 정보, 그룹이 존재하지 않으면 null
      */
-    fun removeMember(groupId: String, userId: String): StudyGroup? {
+    fun removeMember(groupId: String, userId: UUID): StudyGroup? {
         val group = studyGroups[groupId] ?: return null
         val members = groupMembers[groupId] ?: return null
         
-        // 멤버 제거 (실제로 멤버였는지 상관없이 제거 시도 - 멱등성 보장)
-        val removed = members.remove(userId)
+        // 멤버 제거 (UUID를 String으로 변환, 실제로 멤버였는지 상관없이 제거 시도 - 멱등성 보장)
+        val removed = members.remove(userId.toString())
         val updatedGroup = group.copy(memberCount = members.size)
         studyGroups[groupId] = updatedGroup
         
@@ -99,9 +99,9 @@ class StudyGroupService : StudyGroupRepository {
     /**
      * 사용자가 이미 그룹의 멤버인지 확인
      */
-    fun isUserAlreadyMember(groupId: String, userId: String): Boolean {
+    fun isUserAlreadyMember(groupId: String, userId: UUID): Boolean {
         val members = groupMembers[groupId] ?: return false
-        return members.contains(userId)
+        return members.contains(userId.toString())
     }
     
     /**
@@ -149,7 +149,7 @@ data class StudyGroup(
     val id: String,
     val name: String,
     val description: String,
-    val ownerId: String,
+    val ownerId: UUID,
     val memberCount: Int,
     val createdAt: LocalDateTime
 )
