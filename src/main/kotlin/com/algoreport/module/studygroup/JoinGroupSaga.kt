@@ -140,7 +140,7 @@ class JoinGroupSaga(
      * @throws CustomException ALREADY_JOINED_STUDY - 이미 참여한 그룹인 경우
      */
     private fun validateNotAlreadyJoined(groupId: String, userId: UUID) {
-        if (studyGroupService.isUserAlreadyMember(groupId, userId.toString())) {
+        if (studyGroupService.isUserAlreadyMember(groupId, userId)) {
             throw CustomException(Error.ALREADY_JOINED_STUDY)
         }
         logger.debug("Duplicate membership check passed for user: {}, group: {}", userId, groupId)
@@ -172,7 +172,7 @@ class JoinGroupSaga(
      */
     private fun addMemberAndPublishEvent(groupId: String, userId: UUID) {
         // 멤버 추가
-        val updatedGroup = studyGroupService.addMember(groupId, userId.toString())
+        val updatedGroup = studyGroupService.addMember(groupId, userId)
         if (updatedGroup == null) {
             throw CustomException(Error.GROUP_MEMBER_ADD_FAILED)
         }
