@@ -11,6 +11,7 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     // 400 BAD_REQUEST
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "E40001", "입력값이 올바르지 않습니다."),
     INVALID_SOLVEDAC_HANDLE(HttpStatus.BAD_REQUEST, "E40002", "solved.ac 핸들 형식이 올바르지 않습니다."),
+    INVALID_OAUTH_CODE(HttpStatus.BAD_REQUEST, "E40003", "유효하지 않은 OAuth 인증 코드입니다."),
     
     // 401 UNAUTHORIZED  
     UNAUTHORIZED_ACCESS(HttpStatus.UNAUTHORIZED, "E40101", "인증이 필요합니다."),
@@ -28,11 +29,13 @@ enum class Error(val status: HttpStatus, val code: String, val message: String) 
     
     // 409 CONFLICT
     ALREADY_EXISTS_USER(HttpStatus.CONFLICT, "E40901", "이미 존재하는 사용자입니다."),
-    ALREADY_JOINED_STUDY(HttpStatus.CONFLICT, "E40902", "이미 참여한 스터디 그룹입니다."),
-    SOLVEDAC_ALREADY_LINKED(HttpStatus.CONFLICT, "E40903", "이미 연동된 solved.ac 계정입니다."),
-    ALREADY_LINKED_SOLVEDAC_HANDLE(HttpStatus.CONFLICT, "E40904", "이미 다른 사용자가 연동한 핸들입니다."),
-    DUPLICATE_GROUP_NAME(HttpStatus.CONFLICT, "E40905", "이미 존재하는 스터디 그룹명입니다."),
-    STUDY_GROUP_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "E40906", "스터디 그룹 정원이 초과되었습니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "E40902", "이미 존재하는 이메일입니다."),
+    ALREADY_JOINED_STUDY(HttpStatus.CONFLICT, "E40903", "이미 참여한 스터디 그룹입니다."),
+    SOLVEDAC_ALREADY_LINKED(HttpStatus.CONFLICT, "E40904", "이미 연동된 solved.ac 계정입니다."),
+    ALREADY_LINKED_SOLVEDAC_HANDLE(HttpStatus.CONFLICT, "E40905", "이미 다른 사용자가 연동한 핸들입니다."),
+    DUPLICATE_GROUP_NAME(HttpStatus.CONFLICT, "E40906", "이미 존재하는 스터디 그룹명입니다."),
+    STUDY_GROUP_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "E40907", "스터디 그룹 정원이 초과되었습니다."),
+    PROFILE_ALREADY_EXISTS(HttpStatus.CONFLICT, "E40908", "이미 분석 프로필이 존재합니다."),
     
     // 500 INTERNAL_SERVER_ERROR
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50001", "서버 내부 오류가 발생했습니다."),

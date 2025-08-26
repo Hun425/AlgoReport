@@ -56,7 +56,7 @@ class PersonalStatsRefreshSagaTest(
     init {
         beforeEach {
             // 각 테스트 전에 상태 초기화
-            // userService.clear() // JPA Repository 사용으로 불필요
+            userService.clear()
             analysisService.clear()
             elasticsearchService.clear()
             analysisCacheService.evictAllAnalysisCache() // Redis 캐시 클리어

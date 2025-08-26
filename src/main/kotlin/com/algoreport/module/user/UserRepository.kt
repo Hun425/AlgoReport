@@ -1,6 +1,7 @@
 package com.algoreport.module.user
 
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
@@ -29,6 +30,17 @@ interface UserRepository : JpaRepository<User, UUID> {
      * solved.ac 핸들이 설정된 모든 사용자를 조회합니다.
      */
     fun findAllBySolvedacHandleIsNotNull(): List<User>
+
+    /**
+     * solved.ac 핸들로 사용자를 조회합니다.
+     */
+    fun findBySolvedacHandle(solvedacHandle: String): User?
+
+    /**
+     * 활성 사용자 ID 목록을 조회합니다 (solved.ac 연동된 사용자들의 핸들)
+     */
+    @Query("SELECT u.solvedacHandle FROM User u WHERE u.solvedacHandle IS NOT NULL")
+    fun findAllActiveUserIds(): List<String>
 
     // JpaRepository가 기본으로 제공하는 메소드들:
     // - save(user: User): User

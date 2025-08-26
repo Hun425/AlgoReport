@@ -39,7 +39,7 @@ class CreateGroupSagaTest(
         beforeEach {
             // 각 테스트 전에 상태 초기화
             studyGroupService.clear()
-            userService.clear()
+            // userService는 이제 JPA Repository를 사용하므로 clear() 불필요
         }
         
         given("CREATE_GROUP_SAGA가 실행될 때") {

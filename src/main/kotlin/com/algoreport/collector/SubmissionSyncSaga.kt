@@ -1,12 +1,14 @@
 package com.algoreport.collector
 
 import com.algoreport.config.outbox.OutboxService
+import com.algoreport.module.user.UserRepository
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
 import java.util.*
+import com.algoreport.collector.Submission as EntitySubmission
 
 /**
  * 실시간 제출 동기화 SAGA
@@ -19,6 +21,7 @@ class SubmissionSyncSaga(
     private val submissionSyncService: SubmissionSyncService,
     private val outboxService: OutboxService,
     private val submissionRepository: SubmissionRepository,
+    private val userRepository: UserRepository,
     @param:Qualifier("schedulingCoroutineScope") private val coroutineScope: CoroutineScope
 ) {
     
@@ -107,7 +110,6 @@ class SubmissionSyncSaga(
     private suspend fun processSingleUser(userId: UUID): UserSyncResult {
         return try {
             val handle = submissionSyncService.getUserHandle(userId)
-            val lastSyncTime = submissionSyncService.getLastSyncTime(userId)
             
             // solved.ac API 호출 (기본 페이지 1)
             val submissionList = solvedacApiClient.getSubmissions(handle, 1)
@@ -120,17 +122,34 @@ class SubmissionSyncSaga(
             var duplicatesSkipped = 0
             
             // 새로운 제출만 처리
-            for (submission in submissionList.items) {
-                if (!existingIds.contains(submission.submissionId)) {
-                    submissionRepository.save(submission)
+            for (dtoSubmission in submissionList.items) {
+                if (!existingIds.contains(dtoSubmission.submissionId)) {
+                    // DTO를 Entity로 변환 - solved.ac 핸들로 사용자 찾기
+                    val user = userRepository.findBySolvedacHandle(dtoSubmission.user.handle)
+                        ?: continue // 사용자를 찾을 수 없으면 스킵
+                    
+                    val entitySubmission = EntitySubmission(
+                        submissionId = dtoSubmission.submissionId,
+                        user = user,
+                        problemId = dtoSubmission.problem.problemId.toString(),
+                        problemTitle = dtoSubmission.problem.titleKo,
+                        result = dtoSubmission.result,
+                        language = dtoSubmission.language,
+                        submittedAt = dtoSubmission.timestamp,
+                        codeLength = dtoSubmission.codeLength,
+                        runtime = dtoSubmission.runtime,
+                        memory = dtoSubmission.memory
+                    )
+                    
+                    submissionRepository.save(entitySubmission)
                     newSubmissionsCount++
                     
                     // 이벤트 발행 (배치로 처리하지 않고 개별 발행)
                     outboxService.publishEvent(
                         aggregateType = "SUBMISSION",
-                        aggregateId = submission.submissionId.toString(),
+                        aggregateId = dtoSubmission.submissionId.toString(),
                         eventType = "SUBMISSION_PROCESSED",
-                        eventData = mapOf("submissionId" to submission.submissionId)
+                        eventData = mapOf("submissionId" to dtoSubmission.submissionId)
                     )
                 } else {
                     duplicatesSkipped++

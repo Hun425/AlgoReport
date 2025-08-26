@@ -34,11 +34,14 @@ class SubmissionSyncSagaTest : BehaviorSpec({
         val outboxService = mockk<OutboxService>()
         val submissionRepository = mockk<SubmissionRepository>()
         
+        val userRepository = mockk<com.algoreport.module.user.UserRepository>()
+        
         val saga = SubmissionSyncSaga(
             solvedacApiClient = solvedacApiClient,
             submissionSyncService = submissionSyncService,
             outboxService = outboxService,
             submissionRepository = submissionRepository,
+            userRepository = userRepository,
             coroutineScope = mockk()
         )
         
@@ -125,6 +128,12 @@ class SubmissionSyncSagaTest : BehaviorSpec({
             every { submissionRepository.save(any()) } returnsArgument 0
             every { submissionSyncService.updateLastSyncTime(any(), any()) } returns Unit
             
+            // UserRepository Mock 설정 - solved.ac 핸들로 사용자 찾기
+            val mockUser1 = mockk<com.algoreport.module.user.User>()
+            val mockUser2 = mockk<com.algoreport.module.user.User>()
+            every { userRepository.findBySolvedacHandle("user1") } returns mockUser1
+            every { userRepository.findBySolvedacHandle("user2") } returns mockUser2
+            
             then("모든 활성 사용자의 새로운 제출이 수집되어야 한다") {
                 val result = runBlocking { saga.executeSync() }
                 
@@ -186,6 +195,10 @@ class SubmissionSyncSagaTest : BehaviorSpec({
             every { submissionRepository.save(any()) } returnsArgument 0
             every { submissionSyncService.updateLastSyncTime(userId, any()) } returns Unit
             
+            // UserRepository Mock 설정
+            val mockUser = mockk<com.algoreport.module.user.User>()
+            every { userRepository.findBySolvedacHandle("testuser") } returns mockUser
+            
             then("마지막 동기화 시점 이후의 제출만 처리되어야 한다") {
                 val result = runBlocking { saga.executeSync() }
                 
@@ -237,6 +250,10 @@ class SubmissionSyncSagaTest : BehaviorSpec({
             // 이미 존재하는 제출
             every { submissionRepository.existsBySubmissionId(3001L) } returns true
             every { submissionSyncService.updateLastSyncTime(userId, any()) } returns Unit
+            
+            // UserRepository Mock 설정 (중복 제출의 경우에는 실제로는 호출되지 않지만 안전성을 위해 설정)
+            val mockUser = mockk<com.algoreport.module.user.User>()
+            every { userRepository.findBySolvedacHandle("testuser") } returns mockUser
             
             then("중복 제출은 건너뛰고 카운트되어야 한다") {
                 val result = runBlocking { saga.executeSync() }
@@ -300,6 +317,10 @@ class SubmissionSyncSagaTest : BehaviorSpec({
                     solvedacApiClient.getSubmissions("user$userId", any()) 
                 } returns SubmissionList(count = 0, items = emptyList())
                 every { submissionSyncService.updateLastSyncTime(userId, any()) } returns Unit
+                
+                // UserRepository Mock 설정 (빈 결과이므로 실제로는 호출되지 않지만 안전성을 위해 설정)
+                val mockUser = mockk<com.algoreport.module.user.User>()
+                every { userRepository.findBySolvedacHandle("user$userId") } returns mockUser
             }
             
             then("순차 처리로 모든 사용자 데이터가 처리되어야 한다") {

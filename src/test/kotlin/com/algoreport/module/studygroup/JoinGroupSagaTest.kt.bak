@@ -47,7 +47,7 @@ class JoinGroupSagaTest(
         beforeEach {
             // 각 테스트 전에 상태 초기화
             studyGroupService.clear()
-            // userService.clear() // JPA Repository 사용으로 불필요
+            userService.clear()
         }
         
         given("JOIN_GROUP_SAGA가 실행될 때") {

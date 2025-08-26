@@ -48,7 +48,7 @@ class SolvedacLinkSagaTest(
             
             // 각 테스트 전에 상태 초기화 및 사용자 생성
             beforeEach {
-                // userService.clear() // JPA Repository 사용으로 불필요
+                userService.clear()
                 val createdUser = userService.createUser(
                     UserCreateRequest(
                         email = validUserEmail,
@@ -160,7 +160,7 @@ class SolvedacLinkSagaTest(
             val solvedacHandle = "test_handle_failure"
             
             beforeEach {
-                // userService.clear() // JPA Repository 사용으로 불필요
+                userService.clear()
             }
             
             `when`("사용자 프로필 업데이트가 실패하면") {
@@ -355,7 +355,7 @@ class SolvedacLinkSagaTest(
             lateinit var eventUserId: String
             
             beforeEach {
-                // userService.clear() // JPA Repository 사용으로 불필요
+                userService.clear()
                 val eventTestUser = userService.createUser(
                     UserCreateRequest(
                         email = eventUserEmail,
