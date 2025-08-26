@@ -7,6 +7,7 @@ import com.algoreport.config.exception.Error
 import com.algoreport.config.outbox.OutboxService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.util.UUID
 
 /**
  * SOLVEDAC_LINK_SAGA 구현
@@ -76,9 +77,8 @@ class SolvedacLinkSaga(
     /**
      * Step 1: 사용자 존재 여부 확인
      */
-    private fun validateUserExists(userId: String): User {
+    private fun validateUserExists(userId: UUID): User {
         return userService.findById(userId)
-            ?: throw CustomException(Error.USER_NOT_FOUND)
     }
     
     /**
@@ -105,7 +105,7 @@ class SolvedacLinkSaga(
     /**
      * Step 4: 사용자 프로필에 solved.ac 정보 업데이트
      */
-    private fun updateUserProfile(userId: String, solvedacHandle: String, userInfo: UserInfo): User {
+    private fun updateUserProfile(userId: UUID, solvedacHandle: String, userInfo: UserInfo): User {
         return userService.updateSolvedacInfo(
             userId = userId,
             solvedacHandle = solvedacHandle,
@@ -117,14 +117,14 @@ class SolvedacLinkSaga(
     /**
      * Step 5: SOLVEDAC_LINKED 이벤트 발행
      */
-    private fun publishLinkingEvent(userId: String, solvedacHandle: String, userInfo: UserInfo) {
+    private fun publishLinkingEvent(userId: UUID, solvedacHandle: String, userInfo: UserInfo) {
         try {
             outboxService.publishEvent(
                 aggregateType = "USER",
-                aggregateId = userId,
+                aggregateId = userId.toString(),
                 eventType = "SOLVEDAC_LINKED",
                 eventData = mapOf(
-                    "userId" to userId,
+                    "userId" to userId.toString(),
                     "solvedacHandle" to solvedacHandle,
                     "tier" to userInfo.tier,
                     "solvedCount" to userInfo.solvedCount

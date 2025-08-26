@@ -7,6 +7,7 @@ import com.algoreport.module.user.UserService
 import com.algoreport.module.user.SagaStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.util.UUID
 
 /**
  * CREATE_GROUP_SAGA 구현
@@ -74,11 +75,8 @@ class CreateGroupSaga(
         }
     }
     
-    private fun validateUser(ownerId: String) {
+    private fun validateUser(ownerId: UUID) {
         val user = userService.findById(ownerId)
-        if (user == null) {
-            throw CustomException(Error.USER_NOT_FOUND)
-        }
         logger.debug("User validation passed for ownerId: {}", ownerId)
     }
     
@@ -95,19 +93,19 @@ class CreateGroupSaga(
         return group
     }
     
-    private fun addOwnerAsMember(groupId: String, ownerId: String) {
-        val updatedGroup = studyGroupService.addMember(groupId, ownerId)
+    private fun addOwnerAsMember(groupId: String, ownerId: UUID) {
+        val updatedGroup = studyGroupService.addMember(groupId, ownerId.toString())
         if (updatedGroup == null) {
             throw CustomException(Error.GROUP_MEMBER_ADD_FAILED)
         }
         logger.debug("Owner added as member to group: {}", groupId)
     }
     
-    private fun publishGroupCreatedEvent(groupId: String, ownerId: String) {
+    private fun publishGroupCreatedEvent(groupId: String, ownerId: UUID) {
         val eventData = mapOf<String, Any>(
             "eventType" to "GROUP_CREATED",
             "groupId" to groupId,
-            "ownerId" to ownerId,
+            "ownerId" to ownerId.toString(),
             "timestamp" to System.currentTimeMillis()
         )
         
@@ -159,12 +157,12 @@ class CreateGroupSaga(
     /**
      * 보상 트랜잭션 관련 이벤트 발행
      */
-    private fun publishCompensationEvent(groupId: String?, ownerId: String, eventType: String) {
+    private fun publishCompensationEvent(groupId: String?, ownerId: UUID, eventType: String) {
         try {
             val eventData = mapOf<String, Any>(
                 "eventType" to eventType,
                 "groupId" to (groupId ?: ""),
-                "ownerId" to ownerId,
+                "ownerId" to ownerId.toString(),
                 "timestamp" to System.currentTimeMillis(),
                 "compensationReason" to "CREATE_GROUP_SAGA_FAILURE"
             )
@@ -185,7 +183,7 @@ class CreateGroupSaga(
 
 // CREATE_GROUP_SAGA 관련 데이터 클래스들
 data class CreateGroupRequest(
-    val ownerId: String,
+    val ownerId: UUID,
     val name: String,
     val description: String
 )

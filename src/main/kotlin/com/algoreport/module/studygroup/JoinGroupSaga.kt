@@ -7,6 +7,7 @@ import com.algoreport.module.user.UserService
 import com.algoreport.module.user.SagaStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.util.UUID
 
 /**
  * JOIN_GROUP_SAGA 구현
@@ -109,11 +110,8 @@ class JoinGroupSaga(
      * @param userId 검증할 사용자 ID
      * @throws CustomException USER_NOT_FOUND - 사용자를 찾을 수 없는 경우
      */
-    private fun validateUser(userId: String) {
+    private fun validateUser(userId: UUID) {
         val user = userService.findById(userId)
-        if (user == null) {
-            throw CustomException(Error.USER_NOT_FOUND)
-        }
         logger.debug("User validation passed for userId: {}", userId)
     }
     
@@ -141,8 +139,8 @@ class JoinGroupSaga(
      * @param userId 확인할 사용자 ID
      * @throws CustomException ALREADY_JOINED_STUDY - 이미 참여한 그룹인 경우
      */
-    private fun validateNotAlreadyJoined(groupId: String, userId: String) {
-        if (studyGroupService.isUserAlreadyMember(groupId, userId)) {
+    private fun validateNotAlreadyJoined(groupId: String, userId: UUID) {
+        if (studyGroupService.isUserAlreadyMember(groupId, userId.toString())) {
             throw CustomException(Error.ALREADY_JOINED_STUDY)
         }
         logger.debug("Duplicate membership check passed for user: {}, group: {}", userId, groupId)
@@ -172,9 +170,9 @@ class JoinGroupSaga(
      * @param userId 추가할 사용자 ID
      * @throws CustomException GROUP_MEMBER_ADD_FAILED - 멤버 추가에 실패한 경우
      */
-    private fun addMemberAndPublishEvent(groupId: String, userId: String) {
+    private fun addMemberAndPublishEvent(groupId: String, userId: UUID) {
         // 멤버 추가
-        val updatedGroup = studyGroupService.addMember(groupId, userId)
+        val updatedGroup = studyGroupService.addMember(groupId, userId.toString())
         if (updatedGroup == null) {
             throw CustomException(Error.GROUP_MEMBER_ADD_FAILED)
         }
@@ -195,11 +193,11 @@ class JoinGroupSaga(
      * @param userId 참여한 사용자 ID  
      * @param newMemberCount 새로운 멤버 수
      */
-    private fun publishGroupJoinedEvent(groupId: String, userId: String, newMemberCount: Int) {
+    private fun publishGroupJoinedEvent(groupId: String, userId: UUID, newMemberCount: Int) {
         val eventData = mapOf<String, Any>(
             "eventType" to "GROUP_JOINED",
             "groupId" to groupId,
-            "userId" to userId,
+            "userId" to userId.toString(),
             "newMemberCount" to newMemberCount,
             "timestamp" to System.currentTimeMillis()
         )
@@ -296,7 +294,7 @@ class JoinGroupSaga(
  * @property groupId 참여하려는 그룹 ID
  */
 data class JoinGroupRequest(
-    val userId: String,
+    val userId: UUID,
     val groupId: String
 )
 
@@ -311,6 +309,6 @@ data class JoinGroupRequest(
 data class JoinGroupResult(
     val sagaStatus: SagaStatus,
     val groupId: String?,
-    val userId: String?,
+    val userId: UUID?,
     val errorMessage: String? = null
 )
