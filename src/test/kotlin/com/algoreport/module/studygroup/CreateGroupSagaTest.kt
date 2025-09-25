@@ -57,7 +57,7 @@ class CreateGroupSagaTest(
                             provider = com.algoreport.module.user.AuthProvider.GOOGLE
                         )
                     )
-                    val ownerId = testUser.id
+                    val ownerId = requireNotNull(testUser.id)
                     
                     val request = CreateGroupRequest(
                         ownerId = ownerId,
@@ -83,7 +83,7 @@ class CreateGroupSagaTest(
                             provider = com.algoreport.module.user.AuthProvider.GOOGLE
                         )
                     )
-                    val ownerId = testUser.id
+                    val ownerId = requireNotNull(testUser.id)
                     
                     val request = CreateGroupRequest(
                         ownerId = ownerId,
@@ -111,7 +111,7 @@ class CreateGroupSagaTest(
                             provider = com.algoreport.module.user.AuthProvider.GOOGLE
                         )
                     )
-                    val ownerId = testUser.id
+                    val ownerId = requireNotNull(testUser.id)
                     
                     val request = CreateGroupRequest(
                         ownerId = ownerId,
@@ -174,8 +174,9 @@ class CreateGroupSagaTest(
                     )
                     
                     // 첫 번째 그룹 생성 성공
+                    val firstOwnerId = requireNotNull(firstUser.id)
                     val firstRequest = CreateGroupRequest(
-                        ownerId = firstUser.id,
+                        ownerId = firstOwnerId,
                         name = duplicateGroupName,
                         description = "첫 번째 그룹"
                     )
@@ -183,8 +184,9 @@ class CreateGroupSagaTest(
                     firstResult.sagaStatus shouldBe SagaStatus.COMPLETED
                     
                     // 같은 이름으로 두 번째 그룹 생성 시도 (실패해야 함)
+                    val secondOwnerId = requireNotNull(secondUser.id)
                     val secondRequest = CreateGroupRequest(
-                        ownerId = secondUser.id,
+                        ownerId = secondOwnerId,
                         name = duplicateGroupName,
                         description = "두 번째 그룹"
                     )
@@ -204,7 +206,7 @@ class CreateGroupSagaTest(
                 then("보상 트랜잭션이 실행되어 생성된 그룹이 삭제되어야 한다") {
                     // 비유효한 사용자 ID로 테스트 (실패 시나리오)
                     val request = CreateGroupRequest(
-                        ownerId = "non_existent_user",
+                        ownerId = UUID.randomUUID(),
                         name = groupName,
                         description = "실패 시나리오 테스트"
                     )
@@ -233,7 +235,7 @@ class CreateGroupSagaTest(
                             provider = com.algoreport.module.user.AuthProvider.GOOGLE
                         )
                     )
-                    val ownerId = eventTestUser.id
+                    val ownerId = requireNotNull(eventTestUser.id)
                     
                     val request = CreateGroupRequest(
                         ownerId = ownerId,

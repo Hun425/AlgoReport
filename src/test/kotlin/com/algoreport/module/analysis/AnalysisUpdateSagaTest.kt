@@ -54,10 +54,14 @@ class AnalysisUpdateSagaTest(
                     // 테스트 사용자 생성
                     val user1 = userService.createUser(UserCreateRequest("user1@test.com", "사용자1", AuthProvider.GOOGLE))
                     val user2 = userService.createUser(UserCreateRequest("user2@test.com", "사용자2", AuthProvider.GOOGLE))
+                    userService.updateSolvedacInfo(requireNotNull(user1.id), "user1_handle", 10, 100)
+                    userService.updateSolvedacInfo(requireNotNull(user2.id), "user2_handle", 11, 120)
+                    val user1Id = requireNotNull(user1.id)
+                    val user2Id = requireNotNull(user2.id)
                     
                     // 테스트 그룹 생성
-                    val group = studyGroupService.createGroup(CreateGroupRequest(user1.id, "알고리즘 스터디", "매일 문제 풀이"))
-                    studyGroupService.addMember(group.id, user2.id)
+                    val group = studyGroupService.createGroup(CreateGroupRequest(user1Id, "알고리즘 스터디", "매일 문제 풀이"))
+                    studyGroupService.addMember(group.id, user2Id)
                     
                     val request = AnalysisUpdateRequest(
                         analysisDate = analysisDate,
@@ -78,8 +82,8 @@ class AnalysisUpdateSagaTest(
                     result.errorMessage shouldBe null
                     
                     // 분석 결과 검증
-                    analysisService.hasPersonalAnalysis(user1.id.toString()) shouldBe true
-                    analysisService.hasPersonalAnalysis(user2.id.toString()) shouldBe true
+                    analysisService.hasPersonalAnalysis(user1Id.toString()) shouldBe true
+                    analysisService.hasPersonalAnalysis(user2Id.toString()) shouldBe true
                     analysisService.hasGroupAnalysis(group.id) shouldBe true
                 }
             }
@@ -108,6 +112,8 @@ class AnalysisUpdateSagaTest(
                 then("보상 트랜잭션이 실행되고 실패 상태로 완료되어야 한다") {
                     // 테스트 사용자 생성
                     val user = userService.createUser(UserCreateRequest("user@test.com", "사용자", AuthProvider.GOOGLE))
+                    userService.updateSolvedacInfo(requireNotNull(user.id), "failure_handle", 12, 130)
+                    val userId = requireNotNull(user.id)
                     
                     // 개인 분석 실패 시뮬레이션
                     analysisService.simulatePersonalAnalysisFailure = true
@@ -126,7 +132,7 @@ class AnalysisUpdateSagaTest(
                     result.compensationExecuted shouldBe true
                     
                     // 보상 트랜잭션으로 상태가 롤백되었는지 확인
-                    analysisService.hasPersonalAnalysis(user.id.toString()) shouldBe false
+                    analysisService.hasPersonalAnalysis(userId.toString()) shouldBe false
                 }
             }
             
@@ -134,7 +140,9 @@ class AnalysisUpdateSagaTest(
                 then("보상 트랜잭션이 실행되고 실패 상태로 완료되어야 한다") {
                     // 테스트 데이터 생성
                     val user = userService.createUser(UserCreateRequest("user@test.com", "사용자", AuthProvider.GOOGLE))
-                    val group = studyGroupService.createGroup(CreateGroupRequest(user.id, "테스트 그룹", "설명"))
+                    val userId = requireNotNull(user.id)
+                    userService.updateSolvedacInfo(userId, "group_failure_handle", 13, 140)
+                    val group = studyGroupService.createGroup(CreateGroupRequest(userId, "테스트 그룹", "설명"))
                     
                     // 그룹 분석 실패 시뮬레이션
                     analysisService.simulateGroupAnalysisFailure = true
@@ -161,7 +169,9 @@ class AnalysisUpdateSagaTest(
                 then("배치 크기에 따라 적절히 분할되어 처리되어야 한다") {
                     // 대용량 테스트 사용자 생성 (10명)
                     val users = (1..10).map { i ->
-                        userService.createUser(UserCreateRequest("user$i@test.com", "사용자$i", AuthProvider.GOOGLE))
+                        userService.createUser(UserCreateRequest("user$i@test.com", "사용자$i", AuthProvider.GOOGLE)).also { created ->
+                            userService.updateSolvedacInfo(requireNotNull(created.id), "bulk_handle_$i", 10 + i, 100 + i)
+                        }
                     }
                     
                     val request = AnalysisUpdateRequest(
@@ -180,7 +190,8 @@ class AnalysisUpdateSagaTest(
                     
                     // 모든 사용자의 개인 분석이 완료되었는지 확인
                     users.forEach { user ->
-                        analysisService.hasPersonalAnalysis(user.id.toString()) shouldBe true
+                        val savedUserId = requireNotNull(user.id)
+                        analysisService.hasPersonalAnalysis(savedUserId.toString()) shouldBe true
                     }
                 }
             }

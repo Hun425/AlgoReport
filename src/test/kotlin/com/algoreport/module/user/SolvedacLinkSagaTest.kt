@@ -56,7 +56,7 @@ class SolvedacLinkSagaTest(
                         provider = AuthProvider.GOOGLE
                     )
                 )
-                userId = createdUser.id  // 실제 생성된 ID 사용
+                userId = createdUser.id!!  // 실제 생성된 ID 사용
             }
             
             `when`("유효한 solved.ac 핸들이 제공되면") {
@@ -137,7 +137,7 @@ class SolvedacLinkSagaTest(
                     
                     // 첫 번째 사용자가 핸들 연동 성공
                     val firstRequest = SolvedacLinkRequest(
-                        userId = anotherUser.id,  // 실제 생성된 ID 사용
+                        userId = anotherUser.id!!,  // 실제 생성된 ID 사용
                         solvedacHandle = duplicateHandle
                     )
                     val firstResult = solvedacLinkSaga.start(firstRequest)
@@ -292,7 +292,7 @@ class SolvedacLinkSagaTest(
                     every { mockUserService.findById(user1Id) } returns originalUser
                     every { mockUserService.existsBySolvedacHandle("newhandle") } returns false
                     every { mockSolvedacApiClient.getUserInfo("newhandle") } returns userInfo
-                    every { mockUserService.updateSolvedacInfo(user1Id, "newhandle", 20, 200) } returns null
+                    every { mockUserService.updateSolvedacInfo(user1Id, "newhandle", 20, 200) } throws RuntimeException("update failed")
                     every { mockUserService.updateSolvedacInfo(user1Id, "originalhandle", 15, 100) } returns originalUser
                     
                     val request = SolvedacLinkRequest(
@@ -312,8 +312,9 @@ class SolvedacLinkSagaTest(
             
             `when`("이벤트 발행이 실패할 때") {
                 then("EVENT_PUBLISH_FAILED 에러가 발생해야 한다") {
+                    val userId = UUID.randomUUID()
                     val testUser = User(
-                        id = "user1",
+                        id = userId,
                         email = "test@example.com",
                         nickname = "테스트사용자",
                         provider = AuthProvider.GOOGLE
@@ -325,19 +326,19 @@ class SolvedacLinkSagaTest(
                         solvedCount = 100
                     )
                     
-                    every { mockUserService.findById("user1") } returns testUser
+                    every { mockUserService.findById(userId) } returns testUser
                     every { mockUserService.existsBySolvedacHandle("testhandle") } returns false
                     every { mockSolvedacApiClient.getUserInfo("testhandle") } returns userInfo
-                    every { mockUserService.updateSolvedacInfo("user1", "testhandle", 15, 100) } returns testUser.copy(
+                    every { mockUserService.updateSolvedacInfo(userId, "testhandle", 15, 100) } returns testUser.copy(
                         solvedacHandle = "testhandle",
                         solvedacTier = 15,
                         solvedacSolvedCount = 100
                     )
                     every { mockOutboxService.publishEvent(any(), any(), any(), any()) } throws RuntimeException("Event publish failed")
-                    every { mockUserService.updateSolvedacInfo("user1", "", 0, 0) } returns testUser
-                    
+                    every { mockUserService.updateSolvedacInfo(userId, "", 0, 0) } returns testUser
+
                     val request = SolvedacLinkRequest(
-                        userId = "user1",
+                        userId = userId,
                         solvedacHandle = "testhandle"
                     )
                     
@@ -348,7 +349,7 @@ class SolvedacLinkSagaTest(
                     
                     verify(exactly = 1) { mockOutboxService.publishEvent(any(), any(), any(), any()) }
                     // 보상 트랜잭션 확인
-                    verify(exactly = 1) { mockUserService.updateSolvedacInfo("user1", "", 0, 0) }
+                    verify(exactly = 1) { mockUserService.updateSolvedacInfo(userId, "", 0, 0) }
                 }
             }
         }
@@ -356,7 +357,7 @@ class SolvedacLinkSagaTest(
         given("SOLVEDAC_LINK_SAGA의 이벤트 발행을 확인할 때") {
             val solvedacHandle = "event_test_handle"
             val eventUserEmail = "event@example.com"
-            lateinit var eventUserId: String
+            lateinit var eventUserId: UUID
             
             beforeEach {
                 // userService.clear() // JPA Repository 사용으로 불필요
@@ -367,7 +368,7 @@ class SolvedacLinkSagaTest(
                         provider = AuthProvider.GOOGLE
                     )
                 )
-                eventUserId = eventTestUser.id
+                eventUserId = eventTestUser.id!!
             }
             
             `when`("연동이 성공하면") {

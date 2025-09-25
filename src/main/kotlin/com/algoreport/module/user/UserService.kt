@@ -26,7 +26,6 @@ class UserService(
             throw CustomException(Error.DUPLICATE_EMAIL) // 예외 처리 추가
         }
         val user = User(
-            id = UUID.randomUUID(), // DB에서 새로 생성되므로 이 값은 중요하지 않음
             email = request.email,
             nickname = request.nickname,
             provider = request.provider

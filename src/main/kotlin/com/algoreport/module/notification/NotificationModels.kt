@@ -21,7 +21,7 @@ import java.util.UUID
 data class NotificationSettings(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    val id: UUID,
+    var id: UUID? = null,
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id", unique = true)

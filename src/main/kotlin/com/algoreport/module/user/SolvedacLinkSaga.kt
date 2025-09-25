@@ -106,12 +106,17 @@ class SolvedacLinkSaga(
      * Step 4: 사용자 프로필에 solved.ac 정보 업데이트
      */
     private fun updateUserProfile(userId: UUID, solvedacHandle: String, userInfo: UserInfo): User {
-        return userService.updateSolvedacInfo(
-            userId = userId,
-            solvedacHandle = solvedacHandle,
-            tier = userInfo.tier,
-            solvedCount = userInfo.solvedCount
-        ) ?: throw CustomException(Error.USER_UPDATE_FAILED)
+        return try {
+            userService.updateSolvedacInfo(
+                userId = userId,
+                solvedacHandle = solvedacHandle,
+                tier = userInfo.tier,
+                solvedCount = userInfo.solvedCount
+            ) ?: throw CustomException(Error.USER_UPDATE_FAILED)
+        } catch (e: Exception) {
+            logger.error("사용자 solved.ac 정보 업데이트 실패 - userId: $userId", e)
+            throw CustomException(Error.USER_UPDATE_FAILED)
+        }
     }
     
     /**
@@ -141,16 +146,21 @@ class SolvedacLinkSaga(
      */
     private fun executeCompensation(originalUser: User) {
         try {
-            logger.info("보상 트랜잭션 실행 - userId: ${originalUser.id}")
-            
+            val originalUserId = originalUser.id
+            if (originalUserId == null) {
+                logger.warn("보상 트랜잭션을 실행할 수 없습니다 - 사용자 ID가 null 입니다")
+                return
+            }
+            logger.info("보상 트랜잭션 실행 - userId: $originalUserId")
+
             // 사용자 프로필을 원본 상태로 롤백
             userService.updateSolvedacInfo(
-                userId = originalUser.id,
+                userId = originalUserId,
                 solvedacHandle = originalUser.solvedacHandle ?: "",
                 tier = originalUser.solvedacTier ?: 0,
                 solvedCount = originalUser.solvedacSolvedCount ?: 0
             )
-            
+
             logger.info("보상 트랜잭션 완료 - 원본 상태로 롤백")
         } catch (e: Exception) {
             logger.error("보상 트랜잭션 실패 - userId: ${originalUser.id}", e)
@@ -162,17 +172,28 @@ class SolvedacLinkSaga(
      * SAGA 실패 처리
      */
     private fun handleSagaFailure(exception: Exception): SolvedacLinkResult {
-        return when (exception) {
-            is CustomException -> SolvedacLinkResult(
+        val customException = extractCustomException(exception)
+
+        return if (customException != null) {
+            SolvedacLinkResult(
                 sagaStatus = SagaStatus.FAILED,
                 linkedHandle = null,
-                errorMessage = exception.error.message
+                errorMessage = customException.error.message
             )
-            else -> SolvedacLinkResult(
+        } else {
+            SolvedacLinkResult(
                 sagaStatus = SagaStatus.FAILED,
                 linkedHandle = null,
                 errorMessage = "알 수 없는 오류가 발생했습니다."
             )
+        }
+    }
+
+    private tailrec fun extractCustomException(throwable: Throwable?): CustomException? {
+        return when (throwable) {
+            null -> null
+            is CustomException -> throwable
+            else -> extractCustomException(throwable.cause)
         }
     }
 }

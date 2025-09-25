@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * PERSONAL_STATS_REFRESH_SAGA 테스트
@@ -72,19 +73,20 @@ class PersonalStatsRefreshSagaTest(
                     val testUser = userService.createUser(
                         UserCreateRequest("user@test.com", "테스트사용자", AuthProvider.GOOGLE)
                     )
-                    
+                    val testUserId = requireNotNull(testUser.id)
+
                     val request = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = true,
                         requestedBy = "USER_REQUEST"
                     )
-                    
+
                     val result = personalStatsRefreshSaga.start(request)
-                    
+
                     // 기본 검증
                     result.sagaStatus shouldBe SagaStatus.COMPLETED
-                    result.userId shouldBe testUser.id
+                    result.userId shouldBe testUserId
                     result.dataCollectionCompleted shouldBe true
                     result.elasticsearchIndexingCompleted shouldBe true
                     result.cacheUpdateCompleted shouldBe true
@@ -92,23 +94,23 @@ class PersonalStatsRefreshSagaTest(
                     result.errorMessage shouldBe null
                     
                     // 분석 결과 생성 확인
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
-                    
+                    analysisService.hasPersonalAnalysis(testUserId.toString()) shouldBe true
+
                     // 캐시 업데이트 확인 (Embedded Redis로 실제 캐시 동작 테스트)
-                    val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(testUser.id)
+                    val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(testUserId.toString())
                     cachedAnalysis shouldNotBe null
-                    cachedAnalysis?.userId shouldBe testUser.id
+                    cachedAnalysis?.userId shouldBe testUserId.toString()
                     cachedAnalysis?.totalSolved shouldNotBe null
-                    
+
                     // 분석 서비스에도 저장 확인
-                    analysisService.getPersonalAnalysis(testUser.id) shouldNotBe null
+                    analysisService.getPersonalAnalysis(testUserId.toString()) shouldNotBe null
                 }
             }
-            
+
             `when`("존재하지 않는 사용자에 대해 통계 갱신을 요청하면") {
                 then("실패 상태로 완료되고 적절한 에러 메시지를 반환해야 한다") {
                     val request = PersonalStatsRefreshRequest(
-                        userId = "non-existent-user-id",
+                        userId = UUID.randomUUID(),
                         includeRecentSubmissions = true,
                         forceRefresh = false,
                         requestedBy = "USER_REQUEST"
@@ -126,13 +128,14 @@ class PersonalStatsRefreshSagaTest(
             `when`("solved.ac 데이터 수집 단계에서 실패하면") {
                 then("보상 트랜잭션이 실행되고 실패 상태로 완료되어야 한다") {
                     // 테스트 사용자 생성 - 존재하지 않는 사용자로 실패 유도
+                    val missingUserId = UUID.randomUUID()
                     val request = PersonalStatsRefreshRequest(
-                        userId = "non-existent-user-id",
+                        userId = missingUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = true,
                         requestedBy = "SYSTEM_TRIGGER"
                     )
-                    
+
                     val result = personalStatsRefreshSaga.start(request)
                     
                     result.sagaStatus shouldBe SagaStatus.FAILED
@@ -140,7 +143,7 @@ class PersonalStatsRefreshSagaTest(
                     result.compensationExecuted shouldBe true
                     
                     // 보상 트랜잭션으로 생성된 데이터가 롤백되었는지 확인
-                    analysisService.hasPersonalAnalysis("non-existent-user-id") shouldBe false
+                    analysisService.hasPersonalAnalysis(missingUserId.toString()) shouldBe false
                 }
             }
             
@@ -150,12 +153,13 @@ class PersonalStatsRefreshSagaTest(
                     val testUser = userService.createUser(
                         UserCreateRequest("user@test.com", "테스트사용자", AuthProvider.GOOGLE)
                     )
-                    
+                    val testUserId = requireNotNull(testUser.id)
+
                     // Elasticsearch 인덱싱 실패 시뮬레이션 설정
                     elasticsearchService.simulateIndexingFailure = true
-                    
+
                     val request = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = true,
                         requestedBy = "SYSTEM_TRIGGER"
@@ -170,20 +174,21 @@ class PersonalStatsRefreshSagaTest(
                     result.cacheUpdateCompleted shouldBe true // 캐시는 성공해야 함
                     
                     // 분석 결과는 생성되어야 함
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUserId.toString()) shouldBe true
                 }
             }
-            
+
             `when`("강제 새로고침이 아닌 경우 최근 캐시된 데이터가 있으면") {
                 then("캐시된 데이터를 활용하여 빠르게 처리되어야 한다") {
                     // 테스트 사용자 생성
                     val testUser = userService.createUser(
                         UserCreateRequest("user@test.com", "테스트사용자", AuthProvider.GOOGLE)
                     )
-                    
+                    val testUserId = requireNotNull(testUser.id)
+
                     // 사전에 Redis 캐시에 데이터 저장 (최근 1시간 이내)
                     val cachedAnalysis = PersonalAnalysis(
-                        userId = testUser.id,
+                        userId = testUserId.toString(),
                         analysisDate = LocalDateTime.now().minusMinutes(30), // 30분 전 데이터
                         totalSolved = 150,
                         currentTier = 15,
@@ -193,23 +198,23 @@ class PersonalStatsRefreshSagaTest(
                         weakTags = listOf("dp", "string"),
                         strongTags = listOf("greedy", "implementation")
                     )
-                    analysisCacheService.cachePersonalAnalysis(testUser.id, cachedAnalysis)
-                    
+                    analysisCacheService.cachePersonalAnalysis(testUserId.toString(), cachedAnalysis)
+
                     val request = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = false, // 강제 새로고침 아님
                         requestedBy = "DASHBOARD_VIEW"
                     )
                     
                     val result = personalStatsRefreshSaga.start(request)
-                    
+
                     result.sagaStatus shouldBe SagaStatus.COMPLETED
                     result.usedCachedData shouldBe true // 실제 캐시 활용
                     result.processingTimeMs shouldBeLessThan 1000L // 빠른 처리 확인
-                    
+
                     // 캐시된 데이터가 활용되었는지 확인
-                    val finalAnalysis = analysisService.getPersonalAnalysis(testUser.id)
+                    val finalAnalysis = analysisService.getPersonalAnalysis(testUserId.toString())
                     finalAnalysis?.totalSolved shouldBe 150 // 캐시된 값
                     finalAnalysis?.currentTier shouldBe 15
                 }
@@ -221,11 +226,12 @@ class PersonalStatsRefreshSagaTest(
                     val testUser = userService.createUser(
                         UserCreateRequest("user@test.com", "테스트사용자", AuthProvider.GOOGLE)
                     )
+                    val testUserId = requireNotNull(testUser.id)
                     
                     // Mock 환경에서는 OutboxService 실패 시뮬레이션이 어려우므로 정상 처리 확인
                     
                     val request = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = true,
                         requestedBy = "USER_REQUEST"
@@ -242,7 +248,7 @@ class PersonalStatsRefreshSagaTest(
                     result.compensationExecuted shouldBe false // 보상 트랜잭션 실행 안함
                     
                     // 분석 데이터는 정상적으로 생성되어야 함
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUserId.toString()) shouldBe true
                 }
             }
             
@@ -254,8 +260,10 @@ class PersonalStatsRefreshSagaTest(
                     )
                     
                     // 오래된 캐시 데이터 저장 (2시간 전)
+                    val testUserId = requireNotNull(testUser.id)
+
                     val oldCachedAnalysis = PersonalAnalysis(
-                        userId = testUser.id,
+                        userId = testUserId.toString(),
                         analysisDate = LocalDateTime.now().minusHours(2), // 2시간 전 데이터
                         totalSolved = 100,
                         currentTier = 10,
@@ -265,10 +273,10 @@ class PersonalStatsRefreshSagaTest(
                         weakTags = listOf("dp"),
                         strongTags = listOf("greedy")
                     )
-                    analysisCacheService.cachePersonalAnalysis(testUser.id, oldCachedAnalysis)
-                    
+                    analysisCacheService.cachePersonalAnalysis(testUserId.toString(), oldCachedAnalysis)
+
                     val request = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = false,
                         requestedBy = "DASHBOARD_VIEW"
@@ -281,7 +289,7 @@ class PersonalStatsRefreshSagaTest(
                     result.dataCollectionCompleted shouldBe true
                     
                     // 새로운 분석 결과 생성 확인
-                    val newAnalysis = analysisService.getPersonalAnalysis(testUser.id)
+                    val newAnalysis = analysisService.getPersonalAnalysis(testUserId.toString())
                     newAnalysis shouldNotBe null
                     newAnalysis?.totalSolved shouldNotBe 100 // 캐시된 값과 다름
                 }
@@ -293,9 +301,10 @@ class PersonalStatsRefreshSagaTest(
                     val testUser = userService.createUser(
                         UserCreateRequest("user@test.com", "테스트사용자", AuthProvider.GOOGLE)
                     )
-                    
+                    val testUserId = requireNotNull(testUser.id)
+
                     val request = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = false, // 최소 데이터만 수집
                         forceRefresh = true,
                         requestedBy = "BATCH_JOB"
@@ -308,7 +317,7 @@ class PersonalStatsRefreshSagaTest(
                     result.usedCachedData shouldBe false
                     
                     // 분석 결과 생성 확인
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUserId.toString()) shouldBe true
                 }
             }
             
@@ -318,16 +327,17 @@ class PersonalStatsRefreshSagaTest(
                     val testUser = userService.createUser(
                         UserCreateRequest("user@test.com", "테스트사용자", AuthProvider.GOOGLE)
                     )
-                    
+                    val testUserId = requireNotNull(testUser.id)
+
                     val request1 = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = true,
                         requestedBy = "USER_REQUEST_1"
                     )
                     
                     val request2 = PersonalStatsRefreshRequest(
-                        userId = testUser.id,
+                        userId = testUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = true,
                         requestedBy = "USER_REQUEST_2"
@@ -341,7 +351,7 @@ class PersonalStatsRefreshSagaTest(
                     (result1.sagaStatus == SagaStatus.COMPLETED || result2.sagaStatus == SagaStatus.COMPLETED) shouldBe true
                     
                     // 실제로는 한 번만 처리되었는지 확인 (GREEN 단계에서 구체적 검증)
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUserId.toString()) shouldBe true
                 }
             }
         }

@@ -11,6 +11,7 @@ import io.kotest.extensions.spring.SpringExtension
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 /**
  * JOIN_GROUP_SAGA 테스트
@@ -76,16 +77,16 @@ class JoinGroupSagaTest(
                     
                     // 스터디 그룹 생성 (그룹장 포함, memberCount = 1)
                     val createRequest = CreateGroupRequest(
-                        ownerId = ownerUser.id,
+                        ownerId = ownerUser.id!!,
                         name = groupName,
                         description = groupDescription
                     )
                     val createdGroup = studyGroupService.createGroup(createRequest)
-                    studyGroupService.addMember(createdGroup.id, ownerUser.id) // 그룹장 추가
+                    studyGroupService.addMember(createdGroup.id, ownerUser.id!!) // 그룹장 추가
                     
                     // 그룹 참여 요청
                     val joinRequest = JoinGroupRequest(
-                        userId = memberUser.id,
+                        userId = memberUser.id!!,
                         groupId = createdGroup.id
                     )
                     
@@ -93,7 +94,7 @@ class JoinGroupSagaTest(
                     
                     result.sagaStatus shouldBe SagaStatus.COMPLETED
                     result.groupId shouldBe createdGroup.id
-                    result.userId shouldBe memberUser.id
+                    result.userId shouldBe memberUser.id!!
                     result.errorMessage shouldBe null
                     
                     // 그룹 멤버 수 증가 확인 (1 → 2)
@@ -122,16 +123,16 @@ class JoinGroupSagaTest(
                     
                     // 스터디 그룹 생성
                     val createRequest = CreateGroupRequest(
-                        ownerId = ownerUser.id,
+                        ownerId = ownerUser.id!!,
                         name = groupName + "_이벤트테스트",
                         description = groupDescription
                     )
                     val createdGroup = studyGroupService.createGroup(createRequest)
-                    studyGroupService.addMember(createdGroup.id, ownerUser.id)
+                    studyGroupService.addMember(createdGroup.id, ownerUser.id!!)
                     
                     // 그룹 참여 요청
                     val joinRequest = JoinGroupRequest(
-                        userId = memberUser.id,
+                        userId = memberUser.id!!,
                         groupId = createdGroup.id
                     )
                     
@@ -158,16 +159,16 @@ class JoinGroupSagaTest(
                     
                     // 스터디 그룹 생성
                     val createRequest = CreateGroupRequest(
-                        ownerId = ownerUser.id,
+                        ownerId = ownerUser.id!!,
                         name = groupName + "_유효하지않은사용자",
                         description = groupDescription
                     )
                     val createdGroup = studyGroupService.createGroup(createRequest)
-                    studyGroupService.addMember(createdGroup.id, ownerUser.id)
+                    studyGroupService.addMember(createdGroup.id, ownerUser.id!!)
                     
                     // 존재하지 않는 사용자로 참여 시도
                     val joinRequest = JoinGroupRequest(
-                        userId = "non-existent-user-id",
+                        userId = UUID.randomUUID(),
                         groupId = createdGroup.id
                     )
                     
@@ -197,7 +198,7 @@ class JoinGroupSagaTest(
                     
                     // 존재하지 않는 그룹에 참여 시도
                     val joinRequest = JoinGroupRequest(
-                        userId = memberUser.id,
+                        userId = memberUser.id!!,
                         groupId = "non-existent-group-id"
                     )
                     
@@ -229,16 +230,16 @@ class JoinGroupSagaTest(
                     
                     // 스터디 그룹 생성
                     val createRequest = CreateGroupRequest(
-                        ownerId = ownerUser.id,
+                        ownerId = ownerUser.id!!,
                         name = groupName + "_중복참여테스트",
                         description = groupDescription
                     )
                     val createdGroup = studyGroupService.createGroup(createRequest)
-                    studyGroupService.addMember(createdGroup.id, ownerUser.id)
+                    studyGroupService.addMember(createdGroup.id, ownerUser.id!!)
                     
                     // 첫 번째 참여 (성공)
                     val firstJoinRequest = JoinGroupRequest(
-                        userId = memberUser.id,
+                        userId = memberUser.id!!,
                         groupId = createdGroup.id
                     )
                     val firstResult = joinGroupSaga.start(firstJoinRequest)
@@ -246,7 +247,7 @@ class JoinGroupSagaTest(
                     
                     // 두 번째 참여 시도 (중복 참여 - 실패해야 함)
                     val secondJoinRequest = JoinGroupRequest(
-                        userId = memberUser.id,
+                        userId = memberUser.id!!,
                         groupId = createdGroup.id
                     )
                     val secondResult = joinGroupSaga.start(secondJoinRequest)
@@ -278,12 +279,12 @@ class JoinGroupSagaTest(
                     
                     // 스터디 그룹 생성
                     val createRequest = CreateGroupRequest(
-                        ownerId = ownerUser.id,
+                        ownerId = ownerUser.id!!,
                         name = groupName + "_정원초과테스트",
                         description = groupDescription
                     )
                     val createdGroup = studyGroupService.createGroup(createRequest)
-                    studyGroupService.addMember(createdGroup.id, ownerUser.id)
+                    studyGroupService.addMember(createdGroup.id, ownerUser.id!!)
                     
                     // 그룹을 최대 정원(20명)까지 채우기
                     // 현재 1명(그룹장) → 19명 추가 = 20명 (최대 정원)
@@ -295,7 +296,7 @@ class JoinGroupSagaTest(
                                 provider = com.algoreport.module.user.AuthProvider.GOOGLE
                             )
                         )
-                        studyGroupService.addMember(createdGroup.id, tempUser.id)
+                        studyGroupService.addMember(createdGroup.id, tempUser.id!!)
                     }
                     
                     // 그룹 정원 확인 (20명)
@@ -304,7 +305,7 @@ class JoinGroupSagaTest(
                     
                     // 21번째 멤버 추가 시도 (실패해야 함)
                     val joinRequest = JoinGroupRequest(
-                        userId = newMemberUser.id,
+                        userId = newMemberUser.id!!,
                         groupId = createdGroup.id
                     )
                     
@@ -343,17 +344,17 @@ class JoinGroupSagaTest(
                     )
                     
                     val createRequest = CreateGroupRequest(
-                        ownerId = ownerUser.id,
+                        ownerId = ownerUser.id!!,
                         name = groupName,
                         description = "보상 트랜잭션 테스트"
                     )
                     val createdGroup = studyGroupService.createGroup(createRequest)
-                    studyGroupService.addMember(createdGroup.id, ownerUser.id)
+                    studyGroupService.addMember(createdGroup.id, ownerUser.id!!)
                     
                     // 시스템 오류 시뮬레이션을 위한 특수 케이스
                     // 실제 구현에서는 addMember 실패 시나리오 구현 필요
                     val joinRequest = JoinGroupRequest(
-                        userId = memberUser.id,
+                        userId = memberUser.id!!,
                         groupId = createdGroup.id
                     )
                     
@@ -389,15 +390,15 @@ class JoinGroupSagaTest(
                     )
                     
                     val createRequest = CreateGroupRequest(
-                        ownerId = ownerUser.id,
+                        ownerId = ownerUser.id!!,
                         name = groupName,
                         description = "이벤트 발행 검증 테스트"
                     )
                     val createdGroup = studyGroupService.createGroup(createRequest)
-                    studyGroupService.addMember(createdGroup.id, ownerUser.id)
+                    studyGroupService.addMember(createdGroup.id, ownerUser.id!!)
                     
                     val joinRequest = JoinGroupRequest(
-                        userId = memberUser.id,
+                        userId = memberUser.id!!,
                         groupId = createdGroup.id
                     )
                     
@@ -405,7 +406,7 @@ class JoinGroupSagaTest(
                     
                     result.sagaStatus shouldBe SagaStatus.COMPLETED
                     result.groupId shouldBe createdGroup.id
-                    result.userId shouldBe memberUser.id
+                    result.userId shouldBe memberUser.id!!
                     
                     // OutboxService 이벤트 발행 검증
                     // 실제 구현에서는 GROUP_JOINED 이벤트 데이터 확인 필요

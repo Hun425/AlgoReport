@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
+import java.util.UUID
 import kotlin.system.measureTimeMillis
 
 /**
@@ -151,9 +152,9 @@ class AnalysisUpdateSaga(
      * Step 1: 사용자 및 그룹 데이터 수집
      * TDD Refactor: Repository 패턴으로 개선 (리플렉션 제거)
      */
-    private fun collectUserAndGroupData(): Pair<List<String>, List<String>> {
+    private fun collectUserAndGroupData(): Pair<List<UUID>, List<String>> {
         logger.debug("Starting data collection using Repository pattern")
-        
+
         return try {
             // Repository 패턴을 통해 깔끔하게 데이터 수집
             val userIds = userRepository.findAllActiveUserIds()
@@ -174,16 +175,16 @@ class AnalysisUpdateSaga(
     /**
      * Step 2: 개인별 통계 분석 (Kotlin Coroutines 병렬 처리)
      */
-    private suspend fun performPersonalAnalysisAsync(userIds: List<String>, batchSize: Int): Int = coroutineScope {
+    private suspend fun performPersonalAnalysisAsync(userIds: List<UUID>, batchSize: Int): Int = coroutineScope {
         val batches = userIds.chunked(batchSize)
-        
+
         batches.mapIndexed { batchIndex, batch ->
             async {
                 logger.debug("Processing personal analysis batch {} with {} users", batchIndex + 1, batch.size)
-                
+
                 batch.forEach { userId ->
                     try {
-                        analysisService.performPersonalAnalysis(userId)
+                        analysisService.performPersonalAnalysis(userId.toString())
                     } catch (e: Exception) {
                         logger.error("Failed to analyze user {}: {}", userId, e.message)
                         throw e // 배치 실패 시 전체 SAGA 실패
@@ -191,7 +192,7 @@ class AnalysisUpdateSaga(
                 }
             }
         }.awaitAll()
-        
+
         batches.size
     }
     
@@ -200,7 +201,7 @@ class AnalysisUpdateSaga(
      * 
      * TDD Refactor: 안전한 코루틴 스코프 사용으로 블로킹 방지
      */
-    private fun performPersonalAnalysis(userIds: List<String>, batchSize: Int): Int {
+    private fun performPersonalAnalysis(userIds: List<UUID>, batchSize: Int): Int {
         return runBlocking(coroutineScope.coroutineContext) {
             performPersonalAnalysisAsync(userIds, batchSize)
         }
@@ -239,15 +240,16 @@ class AnalysisUpdateSaga(
      * Step 4: Redis 캐시 업데이트
      * TDD Refactor: AnalysisCacheService 통합으로 대시보드 성능 최적화
      */
-    private fun updateCacheData(userIds: List<String>, groupIds: List<String>) {
+    private fun updateCacheData(userIds: List<UUID>, groupIds: List<String>) {
         logger.debug("Starting cache update for {} users and {} groups", userIds.size, groupIds.size)
-        
+
         try {
             // 개인 분석 결과 배치 캐싱 (성능 최적화)
             val personalAnalyses = mutableMapOf<String, PersonalAnalysis>()
             userIds.forEach { userId ->
-                analysisService.getPersonalAnalysis(userId)?.let { analysis ->
-                    personalAnalyses[userId] = analysis
+                val userKey = userId.toString()
+                analysisService.getPersonalAnalysis(userKey)?.let { analysis ->
+                    personalAnalyses[userKey] = analysis
                 }
             }
             
