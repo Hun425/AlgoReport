@@ -37,10 +37,28 @@ interface UserRepository : JpaRepository<User, UUID> {
     fun findBySolvedacHandle(solvedacHandle: String): User?
 
     /**
-     * 활성 사용자 ID 목록을 조회합니다 (solved.ac 연동된 사용자들의 핸들)
+     * 활성 사용자들의 UUID 목록을 조회합니다.
+     * 현재는 모든 가입 사용자를 대상으로 하며, solved.ac 연동 여부와 무관하게 반환합니다.
+     */
+    @Query("SELECT u.id FROM User u")
+    fun findAllActiveUserIds(): List<UUID>
+
+    /**
+     * solved.ac 연동이 완료된 사용자들의 핸들 목록을 조회합니다.
      */
     @Query("SELECT u.solvedacHandle FROM User u WHERE u.solvedacHandle IS NOT NULL")
-    fun findAllActiveUserIds(): List<String>
+    fun findAllActiveSolvedacHandles(): List<String>
+
+    /**
+     * solved.ac 핸들이 연동된 사용자 ID 인지 여부를 확인합니다.
+     */
+    fun existsByIdAndSolvedacHandleIsNotNull(id: UUID): Boolean
+
+    /**
+     * 사용자 UUID 로 solved.ac 핸들을 조회합니다.
+     */
+    @Query("SELECT u.solvedacHandle FROM User u WHERE u.id = :userId")
+    fun findSolvedacHandleById(userId: UUID): String?
 
     // JpaRepository가 기본으로 제공하는 메소드들:
     // - save(user: User): User

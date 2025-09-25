@@ -5,8 +5,6 @@ import com.algoreport.module.user.User
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.OneToOne
@@ -25,8 +23,7 @@ import java.util.UUID
 @Table(name = "analysis_profiles")
 data class AnalysisProfile(
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    val id: UUID,
+    val id: UUID = UUID.randomUUID(),
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id", unique = true)
@@ -138,7 +135,7 @@ enum class BatchStatus {
  * 개인 통계 갱신 SAGA 요청 데이터
  */
 data class PersonalStatsRefreshRequest(
-    val userId: String,
+    val userId: UUID,
     val includeRecentSubmissions: Boolean = true,
     val forceRefresh: Boolean = false, // true면 캐시 무시하고 강제 갱신
     val requestedBy: String = "SYSTEM" // 요청 주체 추적용
@@ -149,7 +146,7 @@ data class PersonalStatsRefreshRequest(
  */
 data class PersonalStatsRefreshResult(
     val sagaStatus: SagaStatus,
-    val userId: String,
+    val userId: UUID,
     val dataCollectionCompleted: Boolean = false,
     val elasticsearchIndexingCompleted: Boolean = false,
     val cacheUpdateCompleted: Boolean = false,

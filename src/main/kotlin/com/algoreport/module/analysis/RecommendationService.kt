@@ -5,6 +5,7 @@ import com.algoreport.config.exception.Error
 import com.algoreport.config.properties.AlgoreportProperties
 import com.algoreport.module.user.UserRepository
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * 맞춤 문제 추천 서비스
@@ -67,10 +68,10 @@ class RecommendationService(
      */
     fun getPersonalizedRecommendations(request: RecommendationRequest): RecommendationResponse {
         val startTime = System.currentTimeMillis()
-        
+
         // Step 1: 사용자 존재 여부 검증
         validateUserExists(request.userId)
-        
+
         // Step 2: 추천 결과 캐시 확인 (성능 최적화)
         if (!request.forceRefresh) {
             val cachedRecommendation = getCachedRecommendation(request.userId)
@@ -78,27 +79,27 @@ class RecommendationService(
                 return updateResponseMetadata(cachedRecommendation, startTime, cacheHit = true)
             }
         }
-        
+
         // Step 3: 개인 분석 데이터 조회
-        val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(request.userId)
-        
+        val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(request.userId.toString())
+
         // Step 4: 추천 생성
         val recommendation = if (cachedAnalysis == null || isBeginnerUser(cachedAnalysis)) {
             createBeginnerRecommendations(request.userId, startTime)
         } else {
             createWeakTagBasedRecommendations(cachedAnalysis, startTime)
         }
-        
+
         // Step 5: 추천 결과 캐싱 (다음 요청 성능 향상)
         cacheRecommendation(request.userId, recommendation)
-        
+
         return recommendation
     }
     
     /**
      * 신규 사용자를 위한 기본 추천 생성
      */
-    private fun createBeginnerRecommendations(userId: String, startTime: Long): RecommendationResponse {
+    private fun createBeginnerRecommendations(userId: UUID, startTime: Long): RecommendationResponse {
         val beginnerProblems = elasticsearchService.getBeginnerRecommendations(DEFAULT_RECOMMENDATIONS)
         
         val recommendedProblems = beginnerProblems.map { problem ->
@@ -154,8 +155,11 @@ class RecommendationService(
         val responseTime = System.currentTimeMillis() - startTime
         val isOptimalResponse = responseTime <= TARGET_RESPONSE_TIME_MS
         
+        val userId = runCatching { UUID.fromString(analysis.userId) }
+            .getOrElse { throw CustomException(Error.USER_NOT_FOUND) }
+
         return RecommendationResponse(
-            userId = analysis.userId,
+            userId = userId,
             recommendedProblems = recommendedProblems,
             totalRecommendations = recommendedProblems.size,
             weakTags = weakTags,
@@ -279,9 +283,8 @@ class RecommendationService(
     /**
      * 사용자 존재 여부 검증 (메서드 분리로 가독성 향상)
      */
-    private fun validateUserExists(userId: String) {
-        val activeUserIds = userRepository.findAllActiveUserIds()
-        if (!activeUserIds.contains(userId)) {
+    private fun validateUserExists(userId: UUID) {
+        if (!userRepository.existsById(userId)) {
             throw CustomException(Error.USER_NOT_FOUND)
         }
     }
@@ -296,15 +299,15 @@ class RecommendationService(
     /**
      * 캐시된 추천 결과 조회 (REFACTOR: 실제 구현 완료)
      */
-    private fun getCachedRecommendation(userId: String): RecommendationResponse? {
-        return analysisCacheService.getRecommendationFromCache(userId)
+    private fun getCachedRecommendation(userId: UUID): RecommendationResponse? {
+        return analysisCacheService.getRecommendationFromCache(userId.toString())
     }
     
     /**
      * 추천 결과 캐싱 (REFACTOR: 실제 구현 완료)
      */
-    private fun cacheRecommendation(userId: String, recommendation: RecommendationResponse) {
-        analysisCacheService.cacheRecommendation(userId, recommendation, RECOMMENDATION_CACHE_TTL_MINUTES)
+    private fun cacheRecommendation(userId: UUID, recommendation: RecommendationResponse) {
+        analysisCacheService.cacheRecommendation(userId.toString(), recommendation, RECOMMENDATION_CACHE_TTL_MINUTES)
     }
     
     /**

@@ -30,7 +30,6 @@ class NotificationSettingsService(
             .orElseThrow { CustomException(Error.USER_NOT_FOUND) }
 
         val settings = NotificationSettings(
-            id = UUID.randomUUID(),
             user = user
             // emailEnabled, dailySummaryEnabled는 엔티티의 기본값(true)을 사용합니다.
         )

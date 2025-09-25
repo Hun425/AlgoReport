@@ -11,6 +11,7 @@ import io.kotest.extensions.spring.SpringExtension
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 /**
  * JOIN_GROUP_SAGA 테스트
@@ -167,7 +168,7 @@ class JoinGroupSagaTest(
                     
                     // 존재하지 않는 사용자로 참여 시도
                     val joinRequest = JoinGroupRequest(
-                        userId = "non-existent-user-id",
+                        userId = UUID.randomUUID(),
                         groupId = createdGroup.id
                     )
                     

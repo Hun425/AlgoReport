@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * PERSONAL_STATS_REFRESH_SAGA 테스트
@@ -92,23 +93,23 @@ class PersonalStatsRefreshSagaTest(
                     result.errorMessage shouldBe null
                     
                     // 분석 결과 생성 확인
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
-                    
+                    analysisService.hasPersonalAnalysis(testUser.id.toString()) shouldBe true
+
                     // 캐시 업데이트 확인 (Embedded Redis로 실제 캐시 동작 테스트)
-                    val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(testUser.id)
+                    val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(testUser.id.toString())
                     cachedAnalysis shouldNotBe null
-                    cachedAnalysis?.userId shouldBe testUser.id
+                    cachedAnalysis?.userId shouldBe testUser.id.toString()
                     cachedAnalysis?.totalSolved shouldNotBe null
-                    
+
                     // 분석 서비스에도 저장 확인
-                    analysisService.getPersonalAnalysis(testUser.id) shouldNotBe null
+                    analysisService.getPersonalAnalysis(testUser.id.toString()) shouldNotBe null
                 }
             }
-            
+
             `when`("존재하지 않는 사용자에 대해 통계 갱신을 요청하면") {
                 then("실패 상태로 완료되고 적절한 에러 메시지를 반환해야 한다") {
                     val request = PersonalStatsRefreshRequest(
-                        userId = "non-existent-user-id",
+                        userId = UUID.randomUUID(),
                         includeRecentSubmissions = true,
                         forceRefresh = false,
                         requestedBy = "USER_REQUEST"
@@ -126,13 +127,14 @@ class PersonalStatsRefreshSagaTest(
             `when`("solved.ac 데이터 수집 단계에서 실패하면") {
                 then("보상 트랜잭션이 실행되고 실패 상태로 완료되어야 한다") {
                     // 테스트 사용자 생성 - 존재하지 않는 사용자로 실패 유도
+                    val missingUserId = UUID.randomUUID()
                     val request = PersonalStatsRefreshRequest(
-                        userId = "non-existent-user-id",
+                        userId = missingUserId,
                         includeRecentSubmissions = true,
                         forceRefresh = true,
                         requestedBy = "SYSTEM_TRIGGER"
                     )
-                    
+
                     val result = personalStatsRefreshSaga.start(request)
                     
                     result.sagaStatus shouldBe SagaStatus.FAILED
@@ -140,7 +142,7 @@ class PersonalStatsRefreshSagaTest(
                     result.compensationExecuted shouldBe true
                     
                     // 보상 트랜잭션으로 생성된 데이터가 롤백되었는지 확인
-                    analysisService.hasPersonalAnalysis("non-existent-user-id") shouldBe false
+                    analysisService.hasPersonalAnalysis(missingUserId.toString()) shouldBe false
                 }
             }
             
@@ -170,7 +172,7 @@ class PersonalStatsRefreshSagaTest(
                     result.cacheUpdateCompleted shouldBe true // 캐시는 성공해야 함
                     
                     // 분석 결과는 생성되어야 함
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUser.id.toString()) shouldBe true
                 }
             }
             
@@ -183,7 +185,7 @@ class PersonalStatsRefreshSagaTest(
                     
                     // 사전에 Redis 캐시에 데이터 저장 (최근 1시간 이내)
                     val cachedAnalysis = PersonalAnalysis(
-                        userId = testUser.id,
+                        userId = testUser.id.toString(),
                         analysisDate = LocalDateTime.now().minusMinutes(30), // 30분 전 데이터
                         totalSolved = 150,
                         currentTier = 15,
@@ -193,7 +195,7 @@ class PersonalStatsRefreshSagaTest(
                         weakTags = listOf("dp", "string"),
                         strongTags = listOf("greedy", "implementation")
                     )
-                    analysisCacheService.cachePersonalAnalysis(testUser.id, cachedAnalysis)
+                    analysisCacheService.cachePersonalAnalysis(testUser.id.toString(), cachedAnalysis)
                     
                     val request = PersonalStatsRefreshRequest(
                         userId = testUser.id,
@@ -209,7 +211,7 @@ class PersonalStatsRefreshSagaTest(
                     result.processingTimeMs shouldBeLessThan 1000L // 빠른 처리 확인
                     
                     // 캐시된 데이터가 활용되었는지 확인
-                    val finalAnalysis = analysisService.getPersonalAnalysis(testUser.id)
+                    val finalAnalysis = analysisService.getPersonalAnalysis(testUser.id.toString())
                     finalAnalysis?.totalSolved shouldBe 150 // 캐시된 값
                     finalAnalysis?.currentTier shouldBe 15
                 }
@@ -242,7 +244,7 @@ class PersonalStatsRefreshSagaTest(
                     result.compensationExecuted shouldBe false // 보상 트랜잭션 실행 안함
                     
                     // 분석 데이터는 정상적으로 생성되어야 함
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUser.id.toString()) shouldBe true
                 }
             }
             
@@ -255,7 +257,7 @@ class PersonalStatsRefreshSagaTest(
                     
                     // 오래된 캐시 데이터 저장 (2시간 전)
                     val oldCachedAnalysis = PersonalAnalysis(
-                        userId = testUser.id,
+                        userId = testUser.id.toString(),
                         analysisDate = LocalDateTime.now().minusHours(2), // 2시간 전 데이터
                         totalSolved = 100,
                         currentTier = 10,
@@ -265,7 +267,7 @@ class PersonalStatsRefreshSagaTest(
                         weakTags = listOf("dp"),
                         strongTags = listOf("greedy")
                     )
-                    analysisCacheService.cachePersonalAnalysis(testUser.id, oldCachedAnalysis)
+                    analysisCacheService.cachePersonalAnalysis(testUser.id.toString(), oldCachedAnalysis)
                     
                     val request = PersonalStatsRefreshRequest(
                         userId = testUser.id,
@@ -281,7 +283,7 @@ class PersonalStatsRefreshSagaTest(
                     result.dataCollectionCompleted shouldBe true
                     
                     // 새로운 분석 결과 생성 확인
-                    val newAnalysis = analysisService.getPersonalAnalysis(testUser.id)
+                    val newAnalysis = analysisService.getPersonalAnalysis(testUser.id.toString())
                     newAnalysis shouldNotBe null
                     newAnalysis?.totalSolved shouldNotBe 100 // 캐시된 값과 다름
                 }
@@ -308,7 +310,7 @@ class PersonalStatsRefreshSagaTest(
                     result.usedCachedData shouldBe false
                     
                     // 분석 결과 생성 확인
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUser.id.toString()) shouldBe true
                 }
             }
             
@@ -341,7 +343,7 @@ class PersonalStatsRefreshSagaTest(
                     (result1.sagaStatus == SagaStatus.COMPLETED || result2.sagaStatus == SagaStatus.COMPLETED) shouldBe true
                     
                     // 실제로는 한 번만 처리되었는지 확인 (GREEN 단계에서 구체적 검증)
-                    analysisService.hasPersonalAnalysis(testUser.id) shouldBe true
+                    analysisService.hasPersonalAnalysis(testUser.id.toString()) shouldBe true
                 }
             }
         }

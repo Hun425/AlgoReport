@@ -4,12 +4,13 @@ import com.algoreport.config.exception.CustomException
 import com.algoreport.config.exception.Error
 import com.algoreport.module.user.UserRepository
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * 개인 대시보드 응답 데이터 모델
  */
 data class PersonalDashboardResponse(
-    val userId: String,
+    val userId: UUID,
     val totalSolved: Int,
     val currentTier: Int,
     val heatmapData: Map<String, Int>, // "2024-01-01" -> 문제해결수
@@ -99,27 +100,28 @@ class PersonalDashboardService(
      * @return 개인 대시보드 응답 데이터 (잔디밭, 태그 숙련도, 티어 정보 등 포함)
      * @throws CustomException 사용자를 찾을 수 없는 경우 (Error.USER_NOT_FOUND)
      */
-    fun getPersonalDashboard(userId: String, forceRefresh: Boolean = false): PersonalDashboardResponse {
+    fun getPersonalDashboard(userId: UUID, forceRefresh: Boolean = false): PersonalDashboardResponse {
         val startTime = System.currentTimeMillis()
-        
+
         // Step 1: 사용자 존재 여부 검증
-        val activeUserIds = userRepository.findAllActiveUserIds()
-        if (!activeUserIds.contains(userId)) {
+        if (!userRepository.existsById(userId)) {
             throw CustomException(Error.USER_NOT_FOUND)
         }
-        
+
+        val userKey = userId.toString()
+
         // Step 2: 캐시 확인 (forceRefresh가 false일 때만)
         if (!forceRefresh) {
-            val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(userId)
+            val cachedAnalysis = analysisCacheService.getPersonalAnalysisFromCache(userKey)
             if (cachedAnalysis != null) {
                 return createResponseFromCache(cachedAnalysis, startTime)
             }
         }
-        
+
         // Step 3: Elasticsearch에서 최신 데이터 수집
-        val tagSkills = elasticsearchService.aggregateTagSkills(userId)
-        val solvedByDifficulty = elasticsearchService.aggregateSolvedByDifficulty(userId)
-        val recentActivity = elasticsearchService.aggregateRecentActivity(userId)
+        val tagSkills = elasticsearchService.aggregateTagSkills(userKey)
+        val solvedByDifficulty = elasticsearchService.aggregateSolvedByDifficulty(userKey)
+        val recentActivity = elasticsearchService.aggregateRecentActivity(userKey)
         
         // Step 4: 신규 사용자 감지
         val isNewUser = tagSkills.isEmpty() && solvedByDifficulty.isEmpty() && recentActivity.isEmpty()
@@ -163,9 +165,11 @@ class PersonalDashboardService(
         val responseTime = System.currentTimeMillis() - startTime
         val heatmapData = generateHeatmapData(cachedAnalysis.recentActivity)
         val difficultyDistribution = transformDifficultyData(cachedAnalysis.solvedByDifficulty)
-        
+        val userId = runCatching { UUID.fromString(cachedAnalysis.userId) }
+            .getOrElse { throw CustomException(Error.USER_NOT_FOUND) }
+
         return PersonalDashboardResponse(
-            userId = cachedAnalysis.userId,
+            userId = userId,
             totalSolved = cachedAnalysis.totalSolved,
             currentTier = cachedAnalysis.currentTier,
             heatmapData = heatmapData,
@@ -186,9 +190,9 @@ class PersonalDashboardService(
      * @param startTime 처리 시작 시각 (응답 시간 계산용)
      * @return 신규 사용자용 기본 대시보드 응답 (안내 메시지 포함)
      */
-    private fun createNewUserResponse(userId: String, startTime: Long): PersonalDashboardResponse {
+    private fun createNewUserResponse(userId: UUID, startTime: Long): PersonalDashboardResponse {
         val responseTime = System.currentTimeMillis() - startTime
-        
+
         return PersonalDashboardResponse(
             userId = userId,
             totalSolved = 0,

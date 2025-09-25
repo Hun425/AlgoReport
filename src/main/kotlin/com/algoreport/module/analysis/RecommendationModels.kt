@@ -1,12 +1,13 @@
 package com.algoreport.module.analysis
 
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * 문제 추천 요청 데이터
  */
 data class RecommendationRequest(
-    val userId: String,
+    val userId: UUID,
     val maxRecommendations: Int = 5,
     val forceRefresh: Boolean = false
 )
@@ -29,7 +30,7 @@ data class RecommendedProblem(
  * 문제 추천 응답 데이터
  */
 data class RecommendationResponse(
-    val userId: String,
+    val userId: UUID,
     val recommendedProblems: List<RecommendedProblem>,
     val totalRecommendations: Int,
     val weakTags: List<String>,
@@ -46,7 +47,7 @@ data class RecommendationResponse(
  * 사용자 취약점 분석 데이터
  */
 data class UserWeakness(
-    val userId: String,
+    val userId: UUID,
     val weakTags: List<String>,
     val currentTier: Int,
     val totalSolved: Int,

@@ -106,12 +106,17 @@ class SolvedacLinkSaga(
      * Step 4: 사용자 프로필에 solved.ac 정보 업데이트
      */
     private fun updateUserProfile(userId: UUID, solvedacHandle: String, userInfo: UserInfo): User {
-        return userService.updateSolvedacInfo(
-            userId = userId,
-            solvedacHandle = solvedacHandle,
-            tier = userInfo.tier,
-            solvedCount = userInfo.solvedCount
-        ) ?: throw CustomException(Error.USER_UPDATE_FAILED)
+        return try {
+            userService.updateSolvedacInfo(
+                userId = userId,
+                solvedacHandle = solvedacHandle,
+                tier = userInfo.tier,
+                solvedCount = userInfo.solvedCount
+            )
+        } catch (ex: Exception) {
+            logger.error("사용자 프로필 업데이트 실패 - userId: $userId", ex)
+            throw CustomException(Error.USER_UPDATE_FAILED)
+        }
     }
     
     /**

@@ -204,7 +204,7 @@ class CreateGroupSagaTest(
                 then("보상 트랜잭션이 실행되어 생성된 그룹이 삭제되어야 한다") {
                     // 비유효한 사용자 ID로 테스트 (실패 시나리오)
                     val request = CreateGroupRequest(
-                        ownerId = "non_existent_user",
+                        ownerId = UUID.randomUUID(),
                         name = groupName,
                         description = "실패 시나리오 테스트"
                     )
