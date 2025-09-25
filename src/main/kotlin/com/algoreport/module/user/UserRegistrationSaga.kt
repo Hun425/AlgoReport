@@ -37,17 +37,18 @@ class UserRegistrationSaga(
         return try {
             // Step 1: 사용자 계정 생성
             val user = createUserAccount(request, sagaId)
+            val userId = requireNotNull(user.id) { "Generated user ID must not be null" }
 
             // Step 2: 분석 프로필 초기화
-            createAnalysisProfile(user.id, sagaId)
+            createAnalysisProfile(userId, sagaId)
 
             // Step 3: 알림 설정 초기화 및 환영 메시지
-            setupNotificationSettings(user.id, sagaId)
+            setupNotificationSettings(userId, sagaId)
 
-            logger.info("SAGA COMPLETED - sagaId: {}, userId: {}", sagaId, user.id)
+            logger.info("SAGA COMPLETED - sagaId: {}, userId: {}", sagaId, userId)
             UserRegistrationResult(
                 sagaStatus = SagaStatus.COMPLETED,
-                userId = user.id
+                userId = userId
             )
 
         } catch (e: Exception) {
@@ -79,12 +80,14 @@ class UserRegistrationSaga(
         )
 
         // USER_REGISTERED 이벤트 발행
+        val userId = requireNotNull(user.id) { "Generated user ID must not be null" }
+
         outboxService.publishEventWithSaga(
             aggregateType = "USER",
-            aggregateId = user.id.toString(),
+            aggregateId = userId.toString(),
             eventType = "USER_REGISTERED",
             eventData = mapOf(
-                "userId" to user.id.toString(),
+                "userId" to userId.toString(),
                 "email" to user.email,
                 "nickname" to user.nickname,
                 "provider" to user.provider.name

@@ -26,7 +26,7 @@ class SubmissionSyncServiceImpl(
         val activeUsers = userRepository.findAllBySolvedacHandleIsNotNull()
         logger.debug("Found {} active users with solved.ac handles", activeUsers.size)
         
-        return activeUsers.map { it.id }
+        return activeUsers.mapNotNull { it.id }
     }
     
     override fun getUserHandle(userId: UUID): String {

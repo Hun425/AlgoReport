@@ -29,7 +29,6 @@ class AnalysisProfileService(
             .orElseThrow { CustomException(Error.USER_NOT_FOUND) }
 
         val profile = AnalysisProfile(
-            id = UUID.randomUUID(),
             user = user
         )
         analysisProfileRepository.save(profile)
